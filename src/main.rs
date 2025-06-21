@@ -1,9 +1,12 @@
+use std::cmp::PartialEq;
 use std::env;
 use std::fs;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum TokenType {
     TokenTypeReturn,
     TokenTypeIntegerLiteral,
@@ -24,23 +27,28 @@ fn main() {
         return;
     }
 
-    let file_path: PathBuf = Path::new(env!("CARGO_MANIFEST_DIR"))
+    let input_file_path: PathBuf = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src")
         .join(&args[1]);
 
-    let file_contents: String = read_file(file_path);
+    let file_contents: String = read_file(input_file_path);
 
     println!("{:?}", file_contents);
 
     let tokens: Vec<Token> = tokenize(file_contents);
-    for  token in tokens {
+    for token in &tokens {
         println!("{:?}", token);
     }
+
+    let output_file_path: PathBuf = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("src/out.asm");
+
+    assemble(tokens, output_file_path);
 }
 
 fn read_file(file_path: PathBuf) -> String {
     let contents: String =
-        fs::read_to_string(file_path).expect("Should have been able to read the file");
+        fs::read_to_string(file_path).expect("Unable to read file.");
     contents
 }
 
@@ -50,7 +58,7 @@ fn tokenize(input_string: String) -> Vec<Token> {
 
     let chars: Vec<char> = input_string.chars().collect();
     let mut index: usize = 0;
-    
+
     while index < chars.len() {
         if chars[index].is_ascii_alphabetic() {
             buffer.push(chars[index]);
@@ -65,7 +73,8 @@ fn tokenize(input_string: String) -> Vec<Token> {
                     value: None,
                 });
             } else {
-                
+                eprintln!("{:?}", "Tokenization Error!");
+                exit(1);
             }
         } else if chars[index].is_ascii_digit() {
             buffer.push(chars[index]);
@@ -93,4 +102,22 @@ fn tokenize(input_string: String) -> Vec<Token> {
         buffer.clear();
     }
     tokens
+}
+
+fn assemble(tokens: Vec<Token>, file_path: PathBuf) {
+    let output_file = File::create(file_path).expect("Unable to create file.");
+    let mut writer = BufWriter::new(&output_file);
+
+    write!(&mut writer, "{}", "bits 64\ndefault rel\n\nsegment .text\nglobal mainCRTStartup\n\nmainCRTStartup:\n").expect("Unable to write to file.");
+
+    for i in 0..tokens.len() {
+        let token = &tokens[i];
+        if (token.token_type == TokenType::TokenTypeReturn) {
+            if i + 1 < tokens.len() && tokens[i + 1].token_type == TokenType::TokenTypeIntegerLiteral {
+                if i + 2 < tokens.len() && tokens[i + 2].token_type == TokenType::TokenTypeSemicolon {
+                    write!(&mut writer, "{}", format!("    mov eax, {}\n    ret", tokens[i + 1].value.as_ref().unwrap())).expect("Unable to write to file.");
+                }
+            }
+        }
+    }
 }
