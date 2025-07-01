@@ -5,5 +5,5 @@ segment .text
 global mainCRTStartup
 
 mainCRTStartup:
-    mov eax, 10
+    mov eax, 1
     ret
