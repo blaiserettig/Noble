@@ -6,6 +6,8 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
+use crate::parse::Parser;
+use crate::parse::ParseTreeNode;
 use crate::tokenize::{Token, TokenType, Tokenizer};
 
 fn main() {
@@ -26,14 +28,16 @@ fn main() {
 
     let mut tokenizer = Tokenizer::new(file_contents);
     let tokens: Vec<Token> = tokenizer.tokenize();
-    for token in &tokens {
-        println!("{:?}", token);
-    }
+
+    let mut parser = Parser::new(tokens);
+    let tree: ParseTreeNode = parser.parse();
+
+    parser.print_tree(&tree, 0);
 
     let output_file_path: PathBuf = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src/out.asm");
 
-    assemble(tokens, output_file_path);
+    //assemble(&tokens, output_file_path);
 }
 
 fn read_file(file_path: PathBuf) -> String {

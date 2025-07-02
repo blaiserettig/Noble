@@ -1,5 +1,6 @@
 use crate::tokenize::{Token, TokenType};
 
+#[derive(Debug)]
 pub enum GrammarSymbols {
     GrammarSymbolNodeEntryPoint,
     GrammarSymbolNodeStatement,
@@ -10,7 +11,7 @@ pub enum GrammarSymbols {
     GrammarSymbolTerminalIntegerLiteral,
 }
 
-struct ParseTreeNode {
+pub struct ParseTreeNode {
     symbol: GrammarSymbols,
     children: Vec<ParseTreeNode>,
 }
@@ -33,19 +34,30 @@ impl Parser {
         self.parse_entry()
     }
 
-    pub fn is_at_end(&self) -> bool {
+    pub fn print_tree(&mut self, node: &ParseTreeNode, indent: usize) {
+        for _i in 0..indent {
+            print!("  ");
+        }
+        println!("{:?}", node.symbol);
+
+        for child in &node.children {
+            self.print_tree(child, indent + 1);
+        }
+    }
+
+    fn is_at_end(&self) -> bool {
         self.token_index >= self.tokens.len()
     }
 
-    pub fn current(&self) -> Option<&Token> {
+    fn current(&self) -> Option<&Token> {
         self.tokens.get(self.token_index)
     }
 
-    pub fn peek(&mut self) -> Option<&Token> {
+    fn peek(&mut self) -> Option<&Token> {
         self.peek_ahead(1)
     }
 
-    pub fn peek_ahead(&mut self, ahead: usize) -> Option<&Token> {
+    fn peek_ahead(&mut self, ahead: usize) -> Option<&Token> {
         if self.token_index + ahead >= self.tokens.len() {
             None
         } else {
@@ -53,15 +65,15 @@ impl Parser {
         }
     }
 
-    pub fn consume(&mut self) -> &Token {
+    fn consume(&mut self) -> &Token {
         let token = &self.tokens[self.token_index];
         self.token_index += 1;
         token
     }
-    
+
     fn parse_entry(&mut self) -> ParseTreeNode {
         self.consume();
-        
+
         let mut entry_node: ParseTreeNode = ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolNodeEntryPoint, children: Vec::new() };
 
         while !self.is_at_end() {
@@ -71,20 +83,22 @@ impl Parser {
         if !self.is_at_end() {
             eprintln!("ParseError: Unexpected tokens after end of entry point");
         }
-        
+
         entry_node
     }
-    
-    fn parse_statement(&mut self) -> Option<ParseTreeNode> {
 
+    fn parse_statement(&mut self) -> Option<ParseTreeNode> {
         let token = &self.current().unwrap();
-        
+
+        let mut statement_node = ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolNodeStatement, children: Vec::new() };
+
         match token.token_type {
             TokenType::TokenTypeExit => {
-                self.parse_exit()
+                statement_node.children.push(self.parse_exit()?);
+                Option::from(statement_node)
             }
             _ => {
-                eprintln!("ParseError: Unrecognized token type: {:?}", token.token_type);    
+                eprintln!("ParseError: Unrecognized token type: {:?}", token.token_type);
                 None
             }
         }
@@ -93,17 +107,15 @@ impl Parser {
     fn parse_exit(&mut self) -> Option<ParseTreeNode> {
         if self.peek() != None && self.peek().unwrap().token_type == TokenType::TokenTypeIntegerLiteral {
             if self.peek_ahead(2) != None && self.peek_ahead(2).unwrap().token_type == TokenType::TokenTypeSemicolon {
-
-                let exit_terminal = ParseTreeNode {symbol: GrammarSymbols::GrammarSymbolTerminalExit, children: Vec::new()};
+                let exit_terminal = ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolTerminalExit, children: Vec::new() };
                 self.consume();
 
                 let expr_node = self.parse_expression()?;
 
-                let semi_terminal = ParseTreeNode {symbol: GrammarSymbols::GrammarSymbolTerminalSemicolon, children: Vec::new()};
+                let semi_terminal = ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolTerminalSemicolon, children: Vec::new() };
                 self.consume();
 
-                Some(ParseTreeNode {symbol: GrammarSymbols::GrammarSymbolNodeExit, children: vec![exit_terminal, expr_node, semi_terminal]})
-
+                Some(ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolNodeExit, children: vec![exit_terminal, expr_node, semi_terminal] })
             } else {
                 eprintln!("MissingTokenError: Expected Semicolon, found None");
                 None
@@ -115,8 +127,9 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> Option<ParseTreeNode> {
-        if self.peek() != None && self.peek().unwrap().token_type == TokenType::TokenTypeIntegerLiteral {
-            let node = ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolNodeExpression,
+        if self.current() != None && self.current().unwrap().token_type == TokenType::TokenTypeIntegerLiteral {
+            let node = ParseTreeNode {
+                symbol: GrammarSymbols::GrammarSymbolNodeExpression,
                 children: vec![ParseTreeNode {
                     symbol: GrammarSymbols::GrammarSymbolTerminalIntegerLiteral,
                     children: Vec::new(),
