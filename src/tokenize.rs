@@ -2,6 +2,7 @@ use std::process::exit;
 
 #[derive(Debug, PartialEq)]
 pub enum TokenType {
+    TokenTypeEntryPoint,
     TokenTypeExit,
     TokenTypeIntegerLiteral,
     TokenTypeSemicolon,
@@ -30,6 +31,8 @@ impl Tokenizer {
         let mut tokens: Vec<Token> = Vec::new();
         let mut buffer: Vec<char> = Vec::new();
 
+        tokens.push(Token {token_type: TokenType::TokenTypeEntryPoint, value: None});
+        
         while !self.is_at_end() {
             if self.current().unwrap().is_ascii_alphabetic() {
                 buffer.push(self.consume());

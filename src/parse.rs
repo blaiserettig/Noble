@@ -30,20 +30,7 @@ impl Parser {
 
     // Assume the tokens are given to us starting from the entry point
     pub fn parse(&mut self) -> ParseTreeNode {
-        let mut entry_node: ParseTreeNode = ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolNodeEntryPoint, children: Vec::new() };
-
-        while !self.is_at_end() {
-            let token: &Token = self.current().expect("ParseError: Could not acquire token");
-
-            match token.token_type {
-                TokenType::TokenTypeExit => {
-                    entry_node.children.push(self.parse_exit().expect("ParseError: Could not parse TokenTypeExit"));
-                }
-                TokenType::TokenTypeIntegerLiteral => {}
-                TokenType::TokenTypeSemicolon => {}
-            }
-        }
-        entry_node
+        self.parse_entry()
     }
 
     pub fn is_at_end(&self) -> bool {
@@ -70,6 +57,37 @@ impl Parser {
         let token = &self.tokens[self.token_index];
         self.token_index += 1;
         token
+    }
+    
+    fn parse_entry(&mut self) -> ParseTreeNode {
+        self.consume();
+        
+        let mut entry_node: ParseTreeNode = ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolNodeEntryPoint, children: Vec::new() };
+
+        while !self.is_at_end() {
+            entry_node.children.push(self.parse_statement().expect("ParseError: Could not parse Statement"));
+        }
+
+        if !self.is_at_end() {
+            eprintln!("ParseError: Unexpected tokens after end of entry point");
+        }
+        
+        entry_node
+    }
+    
+    fn parse_statement(&mut self) -> Option<ParseTreeNode> {
+
+        let token = &self.current().unwrap();
+        
+        match token.token_type {
+            TokenType::TokenTypeExit => {
+                self.parse_exit()
+            }
+            _ => {
+                eprintln!("ParseError: Unrecognized token type: {:?}", token.token_type);    
+                None
+            }
+        }
     }
 
     fn parse_exit(&mut self) -> Option<ParseTreeNode> {
