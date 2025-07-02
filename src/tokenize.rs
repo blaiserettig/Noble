@@ -7,7 +7,7 @@ pub enum TokenType {
     TokenTypeSemicolon,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Token {
     pub token_type: TokenType,
     pub value: Option<String>,
