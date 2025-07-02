@@ -29,9 +29,8 @@ impl Tokenizer {
     pub fn tokenize(&mut self) -> Vec<Token> {
         let mut tokens: Vec<Token> = Vec::new();
         let mut buffer: Vec<char> = Vec::new();
-        
+
         while !self.is_at_end() {
-            println!("{:?}", self.current().unwrap());
             if self.current().unwrap().is_ascii_alphabetic() {
                 buffer.push(self.consume());
                 while self.current() != None && self.current().unwrap().is_ascii_alphanumeric() {
@@ -61,7 +60,7 @@ impl Tokenizer {
                     token_type: TokenType::TokenTypeSemicolon,
                     value: None,
                 });
-            } else if self.chars[self.index].is_ascii_whitespace() {
+            } else if self.current().unwrap().is_ascii_whitespace() {
                 self.consume();
             } else {
                 eprintln!("{:?}", "Tokenization Error!");
@@ -79,11 +78,11 @@ impl Tokenizer {
             None
         }
     }
-    
+
     pub fn is_at_end(&self) -> bool {
         self.index >= self.chars.len()
     }
-    
+
     pub fn peek(&mut self) -> Option<char> {
         self.peek_ahead(1)
     }

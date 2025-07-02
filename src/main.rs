@@ -1,4 +1,5 @@
 mod tokenize;
+mod parse;
 
 use std::env;
 use std::fs;
