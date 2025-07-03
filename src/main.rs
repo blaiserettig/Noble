@@ -33,6 +33,10 @@ fn main() {
     let tree: ParseTreeNode = parser.parse();
 
     parser.print_tree(&tree, 0);
+    println!();
+    
+    let ast = parser.build_ast(&tree);
+    parser.print_ast(&ast, 0);
 
     let output_file_path: PathBuf = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src/out.asm");
