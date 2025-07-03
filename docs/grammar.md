@@ -4,5 +4,6 @@
 |               |   |                   |
 |--------------:|:-:|------------------:|
 | *Entry Point* | ⟶ |            [Stmt] |
-|        [Stmt] | ⟶ | *exit* [Expr] *;* |
+|        [Stmt] | ⟶ |            [Exit] |
+|        [Exit] | ⟶ | *exit* [Expr] *;* |
 |        [Expr] | ⟶ |         [Int_Lit] |

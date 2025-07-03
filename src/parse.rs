@@ -1,18 +1,18 @@
 use crate::tokenize::{Token, TokenType};
 
 #[derive(Debug)]
-pub enum GrammarSymbols {
-    GrammarSymbolNodeEntryPoint,
-    GrammarSymbolNodeStatement,
-    GrammarSymbolNodeExpression,
-    GrammarSymbolNodeExit,
-    GrammarSymbolTerminalExit,
-    GrammarSymbolTerminalSemicolon,
-    GrammarSymbolTerminalIntegerLiteral,
+pub enum ParseTreeSymbol {
+    ParseTreeSymbolNodeEntryPoint,
+    ParseTreeSymbolNodeStatement,
+    ParseTreeSymbolNodeExpression,
+    ParseTreeSymbolNodeExit,
+    ParseTreeSymbolTerminalExit,
+    ParseTreeSymbolTerminalSemicolon,
+    ParseTreeSymbolTerminalIntegerLiteral,
 }
 
 pub struct ParseTreeNode {
-    symbol: GrammarSymbols,
+    symbol: ParseTreeSymbol,
     children: Vec<ParseTreeNode>,
 }
 
@@ -74,72 +74,75 @@ impl Parser {
     fn parse_entry(&mut self) -> ParseTreeNode {
         self.consume();
 
-        let mut entry_node: ParseTreeNode = ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolNodeEntryPoint, children: Vec::new() };
+        let mut entry_node: ParseTreeNode = ParseTreeNode { symbol: ParseTreeSymbol::ParseTreeSymbolNodeEntryPoint, children: Vec::new() };
 
         while !self.is_at_end() {
-            entry_node.children.push(self.parse_statement().expect("ParseError: Could not parse Statement"));
+
+            match self.parse_statement() {
+                Ok(stmt) => entry_node.children.push(stmt),
+                Err(e) => {
+                    eprintln!("Fatal -- {}", e);
+                    break;
+                }
+            }
         }
 
-        if !self.is_at_end() {
+/*        if !self.is_at_end() {
             eprintln!("ParseError: Unexpected tokens after end of entry point");
-        }
+        }*/
 
         entry_node
     }
 
-    fn parse_statement(&mut self) -> Option<ParseTreeNode> {
+    fn parse_statement(&mut self) -> Result<ParseTreeNode, String> {
         let token = &self.current().unwrap();
 
-        let mut statement_node = ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolNodeStatement, children: Vec::new() };
+        let mut statement_node = ParseTreeNode { symbol: ParseTreeSymbol::ParseTreeSymbolNodeStatement, children: Vec::new() };
 
         match token.token_type {
             TokenType::TokenTypeExit => {
                 statement_node.children.push(self.parse_exit()?);
-                Option::from(statement_node)
+                Ok(statement_node)
             }
             _ => {
-                eprintln!("ParseError: Unrecognized token type: {:?}", token.token_type);
-                None
+                Err(format!("ParseError: unrecognized token type: {:?}", token.token_type))
             }
         }
     }
 
-    fn parse_exit(&mut self) -> Option<ParseTreeNode> {
+    fn parse_exit(&mut self) -> Result<ParseTreeNode, String> {
         if self.peek() != None && self.peek().unwrap().token_type == TokenType::TokenTypeIntegerLiteral {
             if self.peek_ahead(2) != None && self.peek_ahead(2).unwrap().token_type == TokenType::TokenTypeSemicolon {
-                let exit_terminal = ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolTerminalExit, children: Vec::new() };
+                let exit_terminal = ParseTreeNode { symbol: ParseTreeSymbol::ParseTreeSymbolTerminalExit, children: Vec::new() };
                 self.consume();
 
                 let expr_node = self.parse_expression()?;
 
-                let semi_terminal = ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolTerminalSemicolon, children: Vec::new() };
+                let semi_terminal = ParseTreeNode { symbol: ParseTreeSymbol::ParseTreeSymbolTerminalSemicolon, children: Vec::new() };
                 self.consume();
 
-                Some(ParseTreeNode { symbol: GrammarSymbols::GrammarSymbolNodeExit, children: vec![exit_terminal, expr_node, semi_terminal] })
+                Ok(ParseTreeNode { symbol: ParseTreeSymbol::ParseTreeSymbolNodeExit, children: vec![exit_terminal, expr_node, semi_terminal] })
             } else {
-                eprintln!("MissingTokenError: Expected Semicolon, found None");
-                None
+                Err("MissingTokenError: expected Semicolon, found None".parse().unwrap())
             }
         } else {
-            eprintln!("MissingTokenError: Expected IntegerLiteral, found None");
-            None
+            Err("MissingTokenError: expected IntegerLiteral, found None".parse().unwrap())
         }
     }
 
-    fn parse_expression(&mut self) -> Option<ParseTreeNode> {
+    fn parse_expression(&mut self) -> Result<ParseTreeNode, String> {
         if self.current() != None && self.current().unwrap().token_type == TokenType::TokenTypeIntegerLiteral {
             let node = ParseTreeNode {
-                symbol: GrammarSymbols::GrammarSymbolNodeExpression,
+                symbol: ParseTreeSymbol::ParseTreeSymbolNodeExpression,
                 children: vec![ParseTreeNode {
-                    symbol: GrammarSymbols::GrammarSymbolTerminalIntegerLiteral,
+                    symbol: ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral,
                     children: Vec::new(),
                 }]
             };
             self.consume();
-            Some(node)
+            Ok(node)
         } else {
-            eprintln!("MissingTokenError: Expected IntegerLiteral from expression, found None");
-            None
+            Err("MissingTokenError: expected IntegerLiteral from expression, found None".parse().unwrap())
         }
     }
 }
