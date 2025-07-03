@@ -9,8 +9,8 @@ pub enum AbstractSyntaxTreeSymbol {
 
 #[derive(Debug)]
 pub struct AbstractSyntaxTreeNode {
-    symbol: AbstractSyntaxTreeSymbol,
-    children: Vec<AbstractSyntaxTreeNode>,
+    pub symbol: AbstractSyntaxTreeSymbol,
+    pub children: Vec<AbstractSyntaxTreeNode>,
 }
 
 #[derive(Debug, PartialEq)]
