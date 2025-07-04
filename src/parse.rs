@@ -19,11 +19,17 @@ pub enum ParseTreeSymbol {
     ParseTreeSymbolNodeStatement,
     ParseTreeSymbolNodeExpression,
     ParseTreeSymbolNodeExit,
+    ParseTreeSymbolNodeVariable,
+    ParseTreeSymbolNodeType,
     ParseTreeSymbolTerminalExit,
     ParseTreeSymbolTerminalSemicolon,
     ParseTreeSymbolTerminalIntegerLiteral,
+    ParseTreeSymbolTerminalEquals,
+    ParseTreeSymbolTerminalI32S,
+    ParseTreeSymbolTerminalIdentifier,
 }
 
+#[derive(Debug)]
 pub struct ParseTreeNode {
     symbol: ParseTreeSymbol,
     children: Vec<ParseTreeNode>,
@@ -50,9 +56,14 @@ impl Parser {
 
     pub fn print_tree(&mut self, node: &ParseTreeNode, indent: usize) {
         for _i in 0..indent {
-            print!("  ");
+            print!("    ");
         }
         println!("{:?}", node.symbol);
+        
+        for _i in 0..indent {
+            print!("    ");
+        }
+        println!("{:?}", node.value);
 
         for child in &node.children {
             self.print_tree(child, indent + 1);
@@ -103,11 +114,6 @@ impl Parser {
                 }
             }
         }
-
-        /*        if !self.is_at_end() {
-            eprintln!("ParseError: Unexpected tokens after end of entry point");
-        }*/
-
         entry_node
     }
 
@@ -125,6 +131,10 @@ impl Parser {
                 statement_node.children.push(self.parse_exit()?);
                 Ok(statement_node)
             }
+            TokenType::TokenTypeTypeI32S => {
+                statement_node.children.push(self.parse_variable()?);
+                Ok(statement_node)
+            }
             _ => Err(format!(
                 "ParseError: unrecognized token type: {:?}",
                 token.token_type
@@ -133,66 +143,140 @@ impl Parser {
     }
 
     fn parse_exit(&mut self) -> Result<ParseTreeNode, String> {
-        if self.peek() != None
-            && self.peek().unwrap().token_type == TokenType::TokenTypeIntegerLiteral
-        {
-            if self.peek_ahead(2) != None
-                && self.peek_ahead(2).unwrap().token_type == TokenType::TokenTypeSemicolon
-            {
-                let exit_terminal = ParseTreeNode {
-                    symbol: ParseTreeSymbol::ParseTreeSymbolTerminalExit,
-                    children: Vec::new(),
-                    value: None,
-                };
-                self.consume();
+        let exit_terminal = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalExit,
+            children: Vec::new(),
+            value: None,
+        };
+        self.consume();
 
-                let expr_node = self.parse_expression()?;
+        let expr_node = self.parse_expression()?;
 
-                let semi_terminal = ParseTreeNode {
-                    symbol: ParseTreeSymbol::ParseTreeSymbolTerminalSemicolon,
-                    children: Vec::new(),
-                    value: None,
-                };
-                self.consume();
-
-                Ok(ParseTreeNode {
-                    symbol: ParseTreeSymbol::ParseTreeSymbolNodeExit,
-                    children: vec![exit_terminal, expr_node, semi_terminal],
-                    value: None,
-                })
-            } else {
-                Err("MissingTokenError: expected Semicolon, found None"
-                    .parse()
-                    .unwrap())
-            }
+        let semi_terminal = if self.current().map_or(false, |t| t.token_type == TokenType::TokenTypeSemicolon) {
+            let node = ParseTreeNode {
+                symbol: ParseTreeSymbol::ParseTreeSymbolTerminalSemicolon,
+                children: Vec::new(),
+                value: None,
+            };
+            self.consume();
+            node
         } else {
-            Err("MissingTokenError: expected IntegerLiteral, found None"
-                .parse()
-                .unwrap())
-        }
+            return Err(format!(
+                "MissingTokenError: expected Semicolon, found: {:?}",
+                self.current().map(|t| &t.token_type)
+            ));
+        };
+
+        Ok(ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolNodeExit,
+            children: vec![exit_terminal, expr_node, semi_terminal],
+            value: None,
+        })
     }
 
     fn parse_expression(&mut self) -> Result<ParseTreeNode, String> {
+        let token = self.current().ok_or("ParseError: Unexpected end of input in expression")?;
+
+        let child = match token.token_type {
+            TokenType::TokenTypeIntegerLiteral => ParseTreeNode {
+                symbol: ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral,
+                children: Vec::new(),
+                value: token.value.clone(),
+            },
+
+            TokenType::TokenTypeIdentifier => ParseTreeNode {
+                symbol: ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier,
+                children: Vec::new(),
+                value: token.value.clone(),
+            },
+
+            _ => {
+                return Err(format!(
+                    "Unexpected token in expression: {:?}",
+                    token.token_type
+                ));
+            }
+        };
+
+        self.consume();
+        Ok(ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolNodeExpression,
+            children: vec![child],
+            value: None,
+        })
+    }
+
+    fn parse_variable(&mut self) -> Result<ParseTreeNode, String> {
+        let type_node = self.parse_type()?;
+        
+        let ident_token = self.current().ok_or("ParseError: Expected identifier, found end of input")?;
+        if ident_token.token_type != TokenType::TokenTypeIdentifier {
+            return Err(format!("ParseError: Expected identifier, found {:?}", ident_token.token_type));
+        }
+        let ident_terminal = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier,
+            children: vec![],
+            value: ident_token.value.clone(),
+        };
+        self.consume();
+
+        let equals_token = self.current().ok_or("ParseError: Expected '=', found end of input")?;
+        if equals_token.token_type != TokenType::TokenTypeEquals {
+            return Err(format!("ParseError: Expected '=', found {:?}", equals_token.token_type));
+        }
+        let equals_terminal = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalEquals,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+
+        let expr_node = self.parse_expression()?;
+
+        let semi_token = self.current().ok_or("ParseError: Expected semicolon, found end of input")?;
+        if semi_token.token_type != TokenType::TokenTypeSemicolon {
+            return Err(format!("ParseError: Expected semicolon, found {:?}", semi_token.token_type));
+        }
+        let semi_terminal = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalSemicolon,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+
+        Ok(ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolNodeVariable,
+            children: vec![
+                type_node,
+                ident_terminal,
+                equals_terminal,
+                expr_node,
+                semi_terminal,
+            ],
+            value: None,
+        })
+    }
+    
+    fn parse_type(&mut self) -> Result<ParseTreeNode, String> {
         if self.current() != None
-            && self.current().unwrap().token_type == TokenType::TokenTypeIntegerLiteral
+            && self.current().unwrap().token_type == TokenType::TokenTypeTypeI32S
         {
             let node = ParseTreeNode {
-                symbol: ParseTreeSymbol::ParseTreeSymbolNodeExpression,
+                symbol: ParseTreeSymbol::ParseTreeSymbolNodeType,
                 children: vec![ParseTreeNode {
-                    symbol: ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral,
+                    symbol: ParseTreeSymbol::ParseTreeSymbolTerminalI32S,
                     children: Vec::new(),
-                    value: self.current().unwrap().value.clone(),
+                    value: None,
                 }],
                 value: None,
             };
             self.consume();
             Ok(node)
         } else {
-            Err(
-                "MissingTokenError: expected IntegerLiteral from expression, found None"
-                    .parse()
-                    .unwrap(),
-            )
+            Err(format!(
+                "MissingTokenError: expected Type, found: {:?}",
+                self.current().unwrap().token_type
+            ))
         }
     }
 

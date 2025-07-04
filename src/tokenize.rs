@@ -6,6 +6,9 @@ pub enum TokenType {
     TokenTypeExit,
     TokenTypeIntegerLiteral,
     TokenTypeSemicolon,
+    TokenTypeEquals,
+    TokenTypeIdentifier,
+    TokenTypeTypeI32S,
 }
 
 #[derive(Debug, PartialEq)]
@@ -32,7 +35,7 @@ impl Tokenizer {
         let mut buffer: Vec<char> = Vec::new();
 
         tokens.push(Token {token_type: TokenType::TokenTypeEntryPoint, value: None});
-        
+
         while !self.is_at_end() {
             if self.current().unwrap().is_ascii_alphabetic() {
                 buffer.push(self.consume());
@@ -44,9 +47,16 @@ impl Tokenizer {
                         token_type: TokenType::TokenTypeExit,
                         value: None,
                     });
-                } else {
-                    eprintln!("{:?}", "Tokenization Error!");
-                    exit(1);
+                } else if buffer == ['i', '3', '2', 's'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeTypeI32S,
+                        value: None,
+                    });
+                } else { // If not a keyword, it is an identifier
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeIdentifier,
+                        value: Some(buffer.iter().collect()),
+                    });
                 }
             } else if self.current().unwrap().is_ascii_digit() {
                 buffer.push(self.consume());
@@ -61,6 +71,12 @@ impl Tokenizer {
                 self.consume();
                 tokens.push(Token {
                     token_type: TokenType::TokenTypeSemicolon,
+                    value: None,
+                });
+            } else if self.current().unwrap() == '=' {
+                self.consume();
+                tokens.push(Token {
+                    token_type: TokenType::TokenTypeEquals,
                     value: None,
                 });
             } else if self.current().unwrap().is_ascii_whitespace() {

@@ -30,7 +30,11 @@ fn main() {
 
     let mut tokenizer = Tokenizer::new(file_contents);
     let tokens: Vec<Token> = tokenizer.tokenize();
-
+    
+    for token in &tokens {
+        println!("{:?}", token);
+    }
+    
     let mut parser = Parser::new(tokens);
     let tree: ParseTreeNode = parser.parse();
 
