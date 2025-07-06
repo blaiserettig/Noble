@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::tokenize::{Token, TokenType};
 use std::vec;
 
@@ -36,9 +37,23 @@ pub struct ParseTreeNode {
     value: Option<String>,
 }
 
+enum Type {
+    I32S,
+}
+
+enum Expr {
+    Int(i32),
+}
+
+struct VarEntry {
+    var_type: Type,
+    var_value: Expr,
+}
+
 pub struct Parser {
     tokens: Vec<Token>,
     token_index: usize,
+    var_map: HashMap<String, VarEntry>,
 }
 
 impl Parser {
@@ -46,6 +61,7 @@ impl Parser {
         Self {
             tokens,
             token_index: 0,
+            var_map: HashMap::new(),
         }
     }
 
@@ -59,7 +75,7 @@ impl Parser {
             print!("    ");
         }
         println!("{:?}", node.symbol);
-        
+
         for _i in 0..indent {
             print!("    ");
         }
@@ -208,7 +224,7 @@ impl Parser {
 
     fn parse_variable(&mut self) -> Result<ParseTreeNode, String> {
         let type_node = self.parse_type()?;
-        
+
         let ident_token = self.current().ok_or("ParseError: Expected identifier, found end of input")?;
         if ident_token.token_type != TokenType::TokenTypeIdentifier {
             return Err(format!("ParseError: Expected identifier, found {:?}", ident_token.token_type));
@@ -256,7 +272,7 @@ impl Parser {
             value: None,
         })
     }
-    
+
     fn parse_type(&mut self) -> Result<ParseTreeNode, String> {
         if self.current() != None
             && self.current().unwrap().token_type == TokenType::TokenTypeTypeI32S
