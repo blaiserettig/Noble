@@ -260,6 +260,8 @@ impl Parser {
         };
         self.consume();
 
+        
+        
         Ok(ParseTreeNode {
             symbol: ParseTreeSymbol::ParseTreeSymbolNodeVariable,
             children: vec![
@@ -296,7 +298,35 @@ impl Parser {
         }
     }
 
-    pub fn print_ast(&mut self, node: &AbstractSyntaxTreeNode, indent: usize) {
+    fn add_var_to_map(&mut self, node_terminal_id: &ParseTreeNode, node_type: &ParseTreeNode, node_expr: &ParseTreeNode, ) {
+        let name = node_terminal_id.value.as_ref().expect("Identifier should have a value").clone();
+
+        let var_type = self.add_var_to_map_type_helper(node_type);
+        let var_value = self.add_var_to_map_expression_helper(node_expr);
+
+        self.var_map.insert(name, VarEntry { var_type, var_value,
+        });
+    }
+
+    fn add_var_to_map_type_helper(&mut self, node: &ParseTreeNode) -> Type {
+        match node.children.first().unwrap().symbol {
+            ParseTreeSymbol::ParseTreeSymbolTerminalI32S => Type::I32S,
+            _ => panic!("Unsupported type node"),
+        }
+    }
+
+    fn add_var_to_map_expression_helper(&mut self, node: &ParseTreeNode) -> Expr {
+        let child = node.children.first().unwrap();
+        match child.symbol {
+            ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral => {
+                let value = child.value.as_ref().unwrap().parse::<i32>().unwrap();
+                Expr::Int(value)
+            },
+            _ => panic!("Unsupported expression type"),
+        }
+    }
+
+    fn print_ast(&mut self, node: &AbstractSyntaxTreeNode, indent: usize) {
         for _i in 0..indent {
             print!("  ");
         }
