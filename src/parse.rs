@@ -6,6 +6,11 @@ use std::vec;
 pub enum AbstractSyntaxTreeSymbol {
     AbstractSyntaxTreeSymbolEntry,
     AbstractSyntaxTreeSymbolExit(i32),
+    AbstractSyntaxTreeSymbolVariableDeclaration {
+        name: String,
+        type_: Type,
+        value: Expr,
+    },
 }
 
 #[derive(Debug)]
@@ -37,12 +42,22 @@ pub struct ParseTreeNode {
     value: Option<String>,
 }
 
+#[derive(Debug, Clone)]
 enum Type {
     I32S,
 }
 
+#[derive(Debug, Clone)]
 enum Expr {
     Int(i32),
+}
+
+impl Expr {
+    pub fn get_expr_value(&self) -> i32 {
+        match self {
+            Expr::Int(value) => *value,
+        }
+    }
 }
 
 struct VarEntry {
@@ -53,7 +68,7 @@ struct VarEntry {
 pub struct Parser {
     tokens: Vec<Token>,
     token_index: usize,
-    var_map: HashMap<String, VarEntry>,
+    symbol_table: HashMap<String, VarEntry>,
 }
 
 impl Parser {
@@ -61,7 +76,7 @@ impl Parser {
         Self {
             tokens,
             token_index: 0,
-            var_map: HashMap::new(),
+            symbol_table: HashMap::new(),
         }
     }
 
@@ -260,8 +275,8 @@ impl Parser {
         };
         self.consume();
 
-        
-        
+        self.add_var_to_map(&ident_terminal, &type_node, &expr_node);
+
         Ok(ParseTreeNode {
             symbol: ParseTreeSymbol::ParseTreeSymbolNodeVariable,
             children: vec![
@@ -304,7 +319,7 @@ impl Parser {
         let var_type = self.add_var_to_map_type_helper(node_type);
         let var_value = self.add_var_to_map_expression_helper(node_expr);
 
-        self.var_map.insert(name, VarEntry { var_type, var_value,
+        self.symbol_table.insert(name, VarEntry { var_type, var_value,
         });
     }
 
@@ -326,7 +341,7 @@ impl Parser {
         }
     }
 
-    fn print_ast(&mut self, node: &AbstractSyntaxTreeNode, indent: usize) {
+    pub fn print_ast(&mut self, node: &AbstractSyntaxTreeNode, indent: usize) {
         for _i in 0..indent {
             print!("  ");
         }
@@ -371,12 +386,19 @@ impl Parser {
                     .iter()
                     .find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression)
                 {
-                    if let Some(int_literal_node) = expr_node.children.first() {
-                        let value_str = int_literal_node
+                    if let Some(value_child_node) = expr_node.children.first() {
+                        let value_str = value_child_node
                             .value
                             .as_ref()
-                            .expect("Missing integer literal value");
-                        let int_value = value_str.parse::<i32>().expect("Invalid integer literal");
+                            .expect("Missing value");
+
+                        
+                        let int_value: i32;
+                        if value_str.trim().parse::<i32>().is_ok() { // integer literal provided
+                            int_value = value_str.trim().parse::<i32>().expect("Invalid integer literal");
+                        } else { // variable provided, go lookup
+                            int_value = self.symbol_table.get(value_str).unwrap().var_value.get_expr_value();
+                        }
 
                         AbstractSyntaxTreeNode {
                             symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolExit(
@@ -389,6 +411,25 @@ impl Parser {
                     }
                 } else {
                     panic!("Exit statement has no expression child");
+                }
+            }
+
+            ParseTreeSymbol::ParseTreeSymbolNodeVariable => {
+                if let Some(terminal_id_node) = parse_tree.children.iter().
+                    find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier) {
+                    let name = terminal_id_node.value.as_ref().expect("Missing terminal");
+                    let entry = self.symbol_table.get(name).unwrap();
+
+                    AbstractSyntaxTreeNode {
+                        symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration {
+                            name: name.to_string(),
+                            type_: entry.var_type.clone(),
+                            value: entry.var_value.clone(),
+                        },
+                        children: Vec::new(),
+                    }
+                } else {
+                    panic!("Variable node has no terminal identifier");
                 }
             }
 

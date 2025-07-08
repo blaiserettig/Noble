@@ -28,6 +28,10 @@ impl Generator {
                 writeln!(writer, "    mov eax, {}", code).unwrap();
                 writeln!(writer, "    ret").unwrap();
             }
+            
+            AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration { .. } => {
+                todo!();
+            }
         }
     }
 }
