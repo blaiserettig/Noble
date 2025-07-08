@@ -5,7 +5,7 @@ use std::vec;
 #[derive(Debug)]
 pub enum AbstractSyntaxTreeSymbol {
     AbstractSyntaxTreeSymbolEntry,
-    AbstractSyntaxTreeSymbolExit(i32),
+    AbstractSyntaxTreeSymbolExit(Expr),
     AbstractSyntaxTreeSymbolVariableDeclaration {
         name: String,
         type_: Type,
@@ -43,21 +43,14 @@ pub struct ParseTreeNode {
 }
 
 #[derive(Debug, Clone)]
-enum Type {
+pub enum Type {
     I32S,
 }
 
 #[derive(Debug, Clone)]
-enum Expr {
+pub enum Expr {
     Int(i32),
-}
-
-impl Expr {
-    pub fn get_expr_value(&self) -> i32 {
-        match self {
-            Expr::Int(value) => *value,
-        }
-    }
+    Ident(String),
 }
 
 struct VarEntry {
@@ -109,7 +102,7 @@ impl Parser {
         self.tokens.get(self.token_index)
     }
 
-    fn peek(&mut self) -> Option<&Token> {
+/*    fn peek(&mut self) -> Option<&Token> {
         self.peek_ahead(1)
     }
 
@@ -119,7 +112,7 @@ impl Parser {
         } else {
             Some(&self.tokens[self.token_index + ahead])
         }
-    }
+    }*/
 
     fn consume(&mut self) -> &Token {
         let token = &self.tokens[self.token_index];
@@ -337,6 +330,10 @@ impl Parser {
                 let value = child.value.as_ref().unwrap().parse::<i32>().unwrap();
                 Expr::Int(value)
             },
+            ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier => {
+                let ident = child.value.as_ref().unwrap().clone();
+                Expr::Ident(ident)
+            }
             _ => panic!("Unsupported expression type"),
         }
     }
@@ -387,23 +384,21 @@ impl Parser {
                     .find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression)
                 {
                     if let Some(value_child_node) = expr_node.children.first() {
-                        let value_str = value_child_node
-                            .value
-                            .as_ref()
-                            .expect("Missing value");
-
                         
-                        let int_value: i32;
-                        if value_str.trim().parse::<i32>().is_ok() { // integer literal provided
-                            int_value = value_str.trim().parse::<i32>().expect("Invalid integer literal");
-                        } else { // variable provided, go lookup
-                            int_value = self.symbol_table.get(value_str).unwrap().var_value.get_expr_value();
-                        }
+                        let expr = match value_child_node.symbol {
+                            ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral => {
+                                let v = value_child_node.value.as_ref().unwrap().parse::<i32>().unwrap();
+                                Expr::Int(v)
+                            }
+                            ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier => {
+                                let name = value_child_node.value.as_ref().unwrap().to_string();
+                                Expr::Ident(name)
+                            }
+                            _ => panic!("Invalid expression in exit"),
+                        };
 
                         AbstractSyntaxTreeNode {
-                            symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolExit(
-                                int_value,
-                            ),
+                            symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolExit(expr),
                             children: Vec::new(),
                         }
                     } else {
