@@ -1,4 +1,13 @@
-# Noble Programming Language
+<p align="left">
+  <img src="https://raw.githubusercontent.com/blaiserettig/blaiserettig.github.io/refs/heads/main/assets/img/NBL_LOGO.png" alt="Noble Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
+  <span style="font-size: 2em; font-weight: bold;">Noble Programming Language</span>
+</p>
+
+[![Made with Rust](https://img.shields.io/badge/Made%20with-Rust-orange?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Build](https://img.shields.io/github/actions/workflow/status/blaiserettig/Noble/ci.yml?branch=main)](https://github.com/blaiserettig/Noble/actions)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 
 A minimal, educational programming language implemented in Rust that compiles to x86-64 assembly. Noble demonstrates the complete pipeline of language implementation, from lexical analysis to code generation.
 
@@ -281,7 +290,3 @@ Contributions are welcome! Areas of interest:
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-*Noble: A small language with big aspirations. Perfect for learning the fundamentals of programming language implementation.*
