@@ -1,4 +1,6 @@
+<p align="left">
 <img src="assets/logo.png" alt="Noble Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
+</p>
 
 ## Noble Programming Language
 
