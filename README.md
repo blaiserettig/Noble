@@ -19,7 +19,7 @@ Noble follows a simple, C-like syntax:
 ```noble
 i32s x = 42;        // Variable declaration and initialization
 i32s y = x;         // Variable assignment from another variable
-exit 0;             // Exit program with return code
+exit y;             // Exit program with return code
 ```
 
 ### Grammar
@@ -59,7 +59,7 @@ x86-64 Assembly (.asm)
 - **`generate.rs`** - x86-64 assembly code generation
 - **`main.rs`** - CLI interface and pipeline orchestration
 
-## 🔧 Implementation Details
+## Implementation Details
 
 ### Tokenizer
 - **Character-by-character parsing** with lookahead support
@@ -78,28 +78,6 @@ x86-64 Assembly (.asm)
 - **Memory management**: Automatic `.bss` segment generation for variables
 - **Register allocation**: Strategic use of EAX register for operations
 - **Boilerplate generation**: Windows-compatible entry point setup
-
-### Data Structures
-
-```rust
-// Token representation
-pub struct Token {
-    pub token_type: TokenType,
-    pub value: Option<String>,
-}
-
-// AST node structure
-pub struct AbstractSyntaxTreeNode {
-    pub symbol: AbstractSyntaxTreeSymbol,
-    pub children: Vec<AbstractSyntaxTreeNode>,
-}
-
-// Expression types
-pub enum Expr {
-    Int(i32),
-    Ident(String),
-}
-```
 
 ## Getting Started
 
@@ -139,8 +117,9 @@ link out.obj /subsystem:console /entry:mainCRTStartup
 
 **Input** (`input.nbl`):
 ```noble
-i32s x = 0;
-exit x;
+i32s x = 1;
+i32s y = x;
+exit y;
 ```
 
 **Generated Assembly** (`out.asm`):
@@ -152,12 +131,95 @@ segment .text
 global mainCRTStartup
 
 mainCRTStartup:
-    mov dword [x], 0
+    mov dword [x], 1
     mov eax, dword [x]
+    mov dword [y], eax
+    mov eax, dword [y]
     ret
 
 segment .bss
+y resd 1
 x resd 1
+```
+
+**Intermediate Steps** (Tokenization):
+```tokens
+Token { token_type: TokenTypeEntryPoint, value: None }
+Token { token_type: TokenTypeTypeI32S, value: None }
+Token { token_type: TokenTypeIdentifier, value: Some("x") }
+Token { token_type: TokenTypeEquals, value: None }
+Token { token_type: TokenTypeIntegerLiteral, value: Some("1") }
+Token { token_type: TokenTypeSemicolon, value: None }
+Token { token_type: TokenTypeTypeI32S, value: None }
+Token { token_type: TokenTypeIdentifier, value: Some("y") }
+Token { token_type: TokenTypeEquals, value: None }
+Token { token_type: TokenTypeIdentifier, value: Some("x") }
+Token { token_type: TokenTypeSemicolon, value: None }
+Token { token_type: TokenTypeExit, value: None }
+Token { token_type: TokenTypeIdentifier, value: Some("y") }
+Token { token_type: TokenTypeSemicolon, value: None }
+```
+
+**Intermediate Steps** (Parsing):
+```parse tree
+ParseTreeSymbolNodeEntryPoint
+None
+    ParseTreeSymbolNodeStatement
+    None
+        ParseTreeSymbolNodeVariable
+        None
+            ParseTreeSymbolNodeType
+            None
+                ParseTreeSymbolTerminalI32S
+                None
+            ParseTreeSymbolTerminalIdentifier
+            Some("x")
+            ParseTreeSymbolTerminalEquals
+            None
+            ParseTreeSymbolNodeExpression
+            None
+                ParseTreeSymbolTerminalIntegerLiteral
+                Some("1")
+            ParseTreeSymbolTerminalSemicolon
+            None
+    ParseTreeSymbolNodeStatement
+    None
+        ParseTreeSymbolNodeVariable
+        None
+            ParseTreeSymbolNodeType
+            None
+                ParseTreeSymbolTerminalI32S
+                None
+            ParseTreeSymbolTerminalIdentifier
+            Some("y")
+            ParseTreeSymbolTerminalEquals
+            None
+            ParseTreeSymbolNodeExpression
+            None
+                ParseTreeSymbolTerminalIdentifier
+                Some("x")
+            ParseTreeSymbolTerminalSemicolon
+            None
+    ParseTreeSymbolNodeStatement
+    None
+        ParseTreeSymbolNodeExit
+        None
+            ParseTreeSymbolTerminalExit
+            None
+            ParseTreeSymbolNodeExpression
+            None
+                ParseTreeSymbolTerminalIdentifier
+                Some("y")
+            ParseTreeSymbolTerminalSemicolon
+            None
+```
+
+**Intermediate Steps** (Abstract Syntax Tree):
+```ast
+AbstractSyntaxTreeSymbolEntry
+  AbstractSyntaxTreeSymbolVariableDeclaration { name: "x", type_: I32S, value: Int(1) }
+  AbstractSyntaxTreeSymbolVariableDeclaration { name: "y", type_: I32S, value: Ident("x") }
+  AbstractSyntaxTreeSymbolExit(Ident("y"))
 ```
 
 ## Technical Highlights
@@ -214,7 +276,7 @@ Contributions are welcome! Areas of interest:
 - [Crafting Interpreters](https://craftinginterpreters.com/)
 - [Engineering a Compiler](https://www.elsevier.com/books/engineering-a-compiler/cooper/978-0-12-815412-0)
 - [x86-64 Assembly Reference](https://www.nasm.us/xdoc/2.15.05/html/nasmdoc0.html)
-- [Compiler Construction CSU Sacramento Lecture Series]([https://www.nasm.us/xdoc/2.15.05/html/nasmdoc0.html](https://www.youtube.com/watch?v=W9B98S2mGGE&list=PL6KMWPQP_DM97Hh0PYNgJord-sANFTI3i))
+- [Compiler Construction CSU Sacramento Lecture Series](https://www.youtube.com/@ghassanshobakicomputerscie9478/playlists)
 
 ## License
 
