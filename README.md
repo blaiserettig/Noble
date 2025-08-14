@@ -102,7 +102,7 @@ cargo build --release
 
 ### Usage
 
-1. **Write a Noble program** (`example.nbl`):
+1. **Write a Noble program in the src/ directory** (`src/example.nbl`):
 ```noble
 i32s result = 42;
 exit result;
@@ -117,6 +117,11 @@ exit result;
 ```bash
 nasm -f win64 src/out.asm -o out.obj
 link out.obj /subsystem:console /entry:mainCRTStartup
+```
+4. **Run and verify** (Windows PowerShell):
+```bash
+./out
+$LASTEXITCODE
 ```
 
 ## Example Compilation
