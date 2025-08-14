@@ -1,2 +1,3 @@
-i32s x = 0;
-exit x;
+i32s x = 1;
+i32s y = x;
+exit y;

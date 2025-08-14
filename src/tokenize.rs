@@ -102,7 +102,7 @@ impl Tokenizer {
         self.index >= self.chars.len()
     }
 
-    pub fn peek(&mut self) -> Option<char> {
+    /*pub fn peek(&mut self) -> Option<char> {
         self.peek_ahead(1)
     }
 
@@ -112,7 +112,7 @@ impl Tokenizer {
         } else {
             Some(self.chars[self.index + ahead])
         }
-    }
+    }*/
 
     pub fn consume(&mut self) -> char {
         let c: char = self.chars[self.index];

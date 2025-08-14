@@ -45,7 +45,7 @@ impl Generator {
                 }
             }
 
-            AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration { name, type_, value } => {
+            AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration { name, type_: _type_, value } => {
                 self.declared_vars.insert(name.clone());
                 match value {
                     Expr::Int(i) => {
