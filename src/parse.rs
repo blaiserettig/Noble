@@ -11,6 +11,10 @@ pub enum AbstractSyntaxTreeSymbol {
         type_: Type,
         value: Expr,
     },
+    AbstractSyntaxTreeSymbolVariableAssignment {
+        name: String,
+        value: Expr,
+    },
 }
 
 #[derive(Debug)]
@@ -25,7 +29,8 @@ pub enum ParseTreeSymbol {
     ParseTreeSymbolNodeStatement,
     ParseTreeSymbolNodeExpression,
     ParseTreeSymbolNodeExit,
-    ParseTreeSymbolNodeVariable,
+    ParseTreeSymbolNodeVariableDeclaration,
+    ParseTreeSymbolNodeVariableAssignment,
     ParseTreeSymbolNodeType,
     ParseTreeSymbolTerminalExit,
     ParseTreeSymbolTerminalSemicolon,
@@ -102,18 +107,6 @@ impl Parser {
         self.tokens.get(self.token_index)
     }
 
-/*    fn peek(&mut self) -> Option<&Token> {
-        self.peek_ahead(1)
-    }
-
-    fn peek_ahead(&mut self, ahead: usize) -> Option<&Token> {
-        if self.token_index + ahead >= self.tokens.len() {
-            None
-        } else {
-            Some(&self.tokens[self.token_index + ahead])
-        }
-    }*/
-
     fn consume(&mut self) -> &Token {
         let token = &self.tokens[self.token_index];
         self.token_index += 1;
@@ -156,7 +149,11 @@ impl Parser {
                 Ok(statement_node)
             }
             TokenType::TokenTypeTypeI32S => {
-                statement_node.children.push(self.parse_variable()?);
+                statement_node.children.push(self.parse_variable_declaration()?);
+                Ok(statement_node)
+            }
+            TokenType::TokenTypeIdentifier => {
+                statement_node.children.push(self.parse_variable_assignment()?);
                 Ok(statement_node)
             }
             _ => Err(format!(
@@ -230,7 +227,7 @@ impl Parser {
         })
     }
 
-    fn parse_variable(&mut self) -> Result<ParseTreeNode, String> {
+    fn parse_variable_declaration(&mut self) -> Result<ParseTreeNode, String> {
         let type_node = self.parse_type()?;
 
         let ident_token = self.current().ok_or("ParseError: Expected identifier, found end of input")?;
@@ -271,7 +268,7 @@ impl Parser {
         self.add_var_to_map(&ident_terminal, &type_node, &expr_node);
 
         Ok(ParseTreeNode {
-            symbol: ParseTreeSymbol::ParseTreeSymbolNodeVariable,
+            symbol: ParseTreeSymbol::ParseTreeSymbolNodeVariableDeclaration,
             children: vec![
                 type_node,
                 ident_terminal,
@@ -281,6 +278,10 @@ impl Parser {
             ],
             value: None,
         })
+    }
+    
+    fn parse_variable_assignment(&mut self) -> Result<ParseTreeNode, String> {
+        
     }
 
     fn parse_type(&mut self) -> Result<ParseTreeNode, String> {
@@ -409,7 +410,7 @@ impl Parser {
                 }
             }
 
-            ParseTreeSymbol::ParseTreeSymbolNodeVariable => {
+            ParseTreeSymbol::ParseTreeSymbolNodeVariableDeclaration => {
                 if let Some(terminal_id_node) = parse_tree.children.iter().
                     find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier) {
                     let name = terminal_id_node.value.as_ref().expect("Missing terminal");
