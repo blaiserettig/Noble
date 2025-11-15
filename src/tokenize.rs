@@ -9,6 +9,7 @@ pub enum TokenType {
     TokenTypeEquals,
     TokenTypeIdentifier,
     TokenTypeTypeI32S,
+    TokenTypeFor,
 }
 
 #[derive(Debug, PartialEq)]
@@ -52,6 +53,11 @@ impl Tokenizer {
                         token_type: TokenType::TokenTypeTypeI32S,
                         value: None,
                     });
+                } else if buffer == ['f', 'o', 'r'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeFor,
+                        value: None
+                    })
                 } else { // If not a keyword, it is an identifier
                     tokens.push(Token {
                         token_type: TokenType::TokenTypeIdentifier,
@@ -101,19 +107,7 @@ impl Tokenizer {
     pub fn is_at_end(&self) -> bool {
         self.index >= self.chars.len()
     }
-
-    /*pub fn peek(&mut self) -> Option<char> {
-        self.peek_ahead(1)
-    }
-
-    pub fn peek_ahead(&mut self, ahead: usize) -> Option<char> {
-        if self.index + ahead >= self.chars.len() {
-            None
-        } else {
-            Some(self.chars[self.index + ahead])
-        }
-    }*/
-
+    
     pub fn consume(&mut self) -> char {
         let c: char = self.chars[self.index];
         self.index += 1;
