@@ -229,7 +229,7 @@ impl Parser {
 
     fn parse_variable_declaration(&mut self) -> Result<ParseTreeNode, String> {
         let type_node = self.parse_type()?;
-
+        
         let ident_token = self.current().ok_or("ParseError: Expected identifier, found end of input")?;
         if ident_token.token_type != TokenType::TokenTypeIdentifier {
             return Err(format!("ParseError: Expected identifier, found {:?}", ident_token.token_type));
@@ -265,7 +265,7 @@ impl Parser {
         };
         self.consume();
 
-        self.add_var_to_map(&ident_terminal, &type_node, &expr_node);
+        self.add__var_to_map(&ident_terminal, &type_node, &expr_node);
 
         Ok(ParseTreeNode {
             symbol: ParseTreeSymbol::ParseTreeSymbolNodeVariableDeclaration,
@@ -279,9 +279,44 @@ impl Parser {
             value: None,
         })
     }
-    
+
     fn parse_variable_assignment(&mut self) -> Result<ParseTreeNode, String> {
-        
+        let ident_token = self.current().ok_or("ParseError: Expected identifier, found end of input")?;
+        if ident_token.token_type != TokenType::TokenTypeIdentifier {
+            return Err(format!("ParseError: Expected identifier, found {:?}", ident_token.token_type));
+        }
+        let ident_terminal = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier,
+            children: vec![],
+            value: ident_token.value.clone(),
+        };
+        self.consume();
+
+        let equals_token = self.current().ok_or("ParseError: Expected '=', found end of input")?;
+        if equals_token.token_type != TokenType::TokenTypeEquals {
+            return Err(format!("ParseError: Expected '=', found {:?}", equals_token.token_type));
+        }
+        let equals_terminal = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalEquals,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+
+        let expr_node = self.parse_expression()?;
+
+        let semi_token = self.current().ok_or("ParseError: Expected semicolon, found end of input")?;
+        if semi_token.token_type != TokenType::TokenTypeSemicolon {
+            return Err(format!("ParseError: Expected semicolon, found {:?}", semi_token.token_type));
+        }
+        let semi_terminal = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalSemicolon,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+
+        self.add__var_to_map(&ident_terminal, &type_node, &expr_node);
     }
 
     fn parse_type(&mut self) -> Result<ParseTreeNode, String> {
@@ -306,15 +341,22 @@ impl Parser {
             ))
         }
     }
+    
+    fn update_var_to_map(&mut self, node_terminal_id: &ParseTreeNode, node_expr: &ParseTreeNode, ) {
+        let name = node_terminal_id.value.as_ref().expect("Identifier should have a value").clone();
+        let var_type = self.symbol_table.get(&name).unwrap().var_type.clone();
+        let var_value = self.add_var_to_map_expression_helper(node_expr).clone();
+        
+        self.symbol_table.insert(name, VarEntry { var_type, var_value });
+    }
 
-    fn add_var_to_map(&mut self, node_terminal_id: &ParseTreeNode, node_type: &ParseTreeNode, node_expr: &ParseTreeNode, ) {
+    fn add__var_to_map(&mut self, node_terminal_id: &ParseTreeNode, node_type: &ParseTreeNode, node_expr: &ParseTreeNode, ) {
         let name = node_terminal_id.value.as_ref().expect("Identifier should have a value").clone();
 
         let var_type = self.add_var_to_map_type_helper(node_type);
         let var_value = self.add_var_to_map_expression_helper(node_expr);
 
-        self.symbol_table.insert(name, VarEntry { var_type, var_value,
-        });
+        self.symbol_table.insert(name, VarEntry { var_type, var_value, });
     }
 
     fn add_var_to_map_type_helper(&mut self, node: &ParseTreeNode) -> Type {
