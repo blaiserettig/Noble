@@ -5,7 +5,9 @@ segment .text
 global mainCRTStartup
 
 mainCRTStartup:
-    mov dword [x], 1
+    mov dword [x], 5
+    mov dword [x], 5
+    mov eax, dword [x]
     ret
 
 segment .bss

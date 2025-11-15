@@ -316,7 +316,18 @@ impl Parser {
         };
         self.consume();
 
-        self.add__var_to_map(&ident_terminal, &type_node, &expr_node);
+        self.update_var_to_map(&ident_terminal, &expr_node);
+
+        Ok(ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolNodeVariableAssignment,
+            children: vec![
+                ident_terminal,
+                equals_terminal,
+                expr_node,
+                semi_terminal,
+            ],
+            value: None,
+        })
     }
 
     fn parse_type(&mut self) -> Result<ParseTreeNode, String> {
@@ -462,6 +473,24 @@ impl Parser {
                         symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration {
                             name: name.to_string(),
                             type_: entry.var_type.clone(),
+                            value: entry.var_value.clone(),
+                        },
+                        children: Vec::new(),
+                    }
+                } else {
+                    panic!("Variable node has no terminal identifier");
+                }
+            }
+            
+            ParseTreeSymbol::ParseTreeSymbolNodeVariableAssignment => {
+                if let Some(terminal_id_node) = parse_tree.children.iter().
+                    find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier) {
+                    let name = terminal_id_node.value.as_ref().expect("Missing terminal");
+                    let entry = self.symbol_table.get(name).unwrap();
+
+                    AbstractSyntaxTreeNode {
+                        symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableAssignment {
+                            name: name.to_string(),
                             value: entry.var_value.clone(),
                         },
                         children: Vec::new(),

@@ -47,15 +47,23 @@ impl Generator {
 
             AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration { name, type_: _type_, value } => {
                 self.declared_vars.insert(name.clone());
-                match value {
-                    Expr::Int(i) => {
-                        writeln!(writer, "    mov dword [{}], {}", name, i).unwrap();
-                    }
-                    Expr::Ident(ident) => {
-                        writeln!(writer, "    mov eax, dword [{}]", ident).unwrap();
-                        writeln!(writer, "    mov dword [{}], eax", name).unwrap();
-                    }
-                }
+                self.match_variable_helper(name, value, writer);
+            }
+            
+            AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableAssignment { name, value } => {
+                self.match_variable_helper(name, value, writer);
+            }
+        }
+    }
+    
+    fn match_variable_helper(&mut self, name: &String, value: &Expr, writer: &mut BufWriter<&File>) {
+        match value {
+            Expr::Int(i) => {
+                writeln!(writer, "    mov dword [{}], {}", name, i).unwrap();
+            }
+            Expr::Ident(ident) => {
+                writeln!(writer, "    mov eax, dword [{}]", ident).unwrap();
+                writeln!(writer, "    mov dword [{}], eax", name).unwrap();
             }
         }
     }
