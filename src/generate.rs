@@ -53,6 +53,10 @@ impl Generator {
             AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableAssignment { name, value } => {
                 self.match_variable_helper(name, value, writer);
             }
+            
+            AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolFor { iterator_name, iterator_begin, iterator_end } => {
+                
+            }
         }
     }
     

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use crate::tokenize::{Token, TokenType};
 use std::vec;
+use crate::parse::ParseTreeSymbol::{ParseTreeSymbolTerminalForDotDot, ParseTreeSymbolTerminalLeftCurlyBrace, ParseTreeSymbolTerminalRightCurlyBrace};
 
 #[derive(Debug)]
 pub enum AbstractSyntaxTreeSymbol {
@@ -15,6 +16,11 @@ pub enum AbstractSyntaxTreeSymbol {
         name: String,
         value: Expr,
     },
+    AbstractSyntaxTreeSymbolFor {
+        iterator_name: String,
+        iterator_begin: Expr,
+        iterator_end: Expr,
+    }
 }
 
 #[derive(Debug)]
@@ -32,12 +38,18 @@ pub enum ParseTreeSymbol {
     ParseTreeSymbolNodeVariableDeclaration,
     ParseTreeSymbolNodeVariableAssignment,
     ParseTreeSymbolNodeType,
+    ParseTreeSymbolNodeFor,
     ParseTreeSymbolTerminalExit,
     ParseTreeSymbolTerminalSemicolon,
     ParseTreeSymbolTerminalIntegerLiteral,
     ParseTreeSymbolTerminalEquals,
     ParseTreeSymbolTerminalI32S,
     ParseTreeSymbolTerminalIdentifier,
+    ParseTreeSymbolTerminalFor,
+    ParseTreeSymbolTerminalForIn,
+    ParseTreeSymbolTerminalForDotDot,
+    ParseTreeSymbolTerminalLeftCurlyBrace,
+    ParseTreeSymbolTerminalRightCurlyBrace,
 }
 
 #[derive(Debug)]
@@ -156,6 +168,10 @@ impl Parser {
                 statement_node.children.push(self.parse_variable_assignment()?);
                 Ok(statement_node)
             }
+            TokenType::TokenTypeFor => {
+                statement_node.children.push(self.parse_for()?);
+                Ok(statement_node)
+            }
             _ => Err(format!(
                 "ParseError: unrecognized token type: {:?}",
                 token.token_type
@@ -229,17 +245,8 @@ impl Parser {
 
     fn parse_variable_declaration(&mut self) -> Result<ParseTreeNode, String> {
         let type_node = self.parse_type()?;
-        
-        let ident_token = self.current().ok_or("ParseError: Expected identifier, found end of input")?;
-        if ident_token.token_type != TokenType::TokenTypeIdentifier {
-            return Err(format!("ParseError: Expected identifier, found {:?}", ident_token.token_type));
-        }
-        let ident_terminal = ParseTreeNode {
-            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier,
-            children: vec![],
-            value: ident_token.value.clone(),
-        };
-        self.consume();
+
+        let ident_terminal = self.parse_expression()?;
 
         let equals_token = self.current().ok_or("ParseError: Expected '=', found end of input")?;
         if equals_token.token_type != TokenType::TokenTypeEquals {
@@ -265,7 +272,7 @@ impl Parser {
         };
         self.consume();
 
-        self.add__var_to_map(&ident_terminal, &type_node, &expr_node);
+        self.add_var_to_map(&ident_terminal, &type_node, &expr_node);
 
         Ok(ParseTreeNode {
             symbol: ParseTreeSymbol::ParseTreeSymbolNodeVariableDeclaration,
@@ -352,6 +359,92 @@ impl Parser {
             ))
         }
     }
+
+    fn parse_for(&mut self) -> Result<ParseTreeNode, String> {
+        if self.current().unwrap().token_type != TokenType::TokenTypeFor {
+            return Err(format!("MissingTokenError: Expected 'for', found: {:?}", self.current().unwrap().token_type));
+        }
+        let terminal_for = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalFor,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+
+        let ident_node = self.parse_expression()?;
+
+        if self.current().unwrap().token_type != TokenType::TokenTypeForIn {
+            return Err(format!("MissingTokenError: Expected 'for_in', found: {:?}", self.current().unwrap().token_type));
+        }
+        let terminal_for_in = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalForIn,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+
+        let lower_bound_node = self.parse_expression()?;
+
+        if self.current().unwrap().token_type != TokenType::TokenTypeForTo {
+            return Err(format!("MissingTokenError: Expected 'for_dot', found: {:?}", self.current().unwrap().token_type));
+        }
+        let terminal_for_dot = ParseTreeNode {
+            symbol: ParseTreeSymbolTerminalForDotDot,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+
+        let upper_bound_node = self.parse_expression()?;
+
+        if self.current().unwrap().token_type != TokenType::TokenTypeLeftCurlyBrace {
+            return Err(format!("MissingTokenError: Expected 'left_curly_brace', found: {:?}", self.current().unwrap().token_type));
+        }
+        let terminal_left_curly_brace = ParseTreeNode {
+            symbol: ParseTreeSymbolTerminalLeftCurlyBrace,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+
+        let loop_statement_node = self.parse_statement()?;
+
+        if self.current().unwrap().token_type != TokenType::TokenTypeRightCurlyBrace {
+            return Err(format!("MissingTokenError: Expected 'right_curly_brace', found: {:?}", self.current().unwrap().token_type));
+        }
+        let terminal_right_curly_brace = ParseTreeNode {
+            symbol: ParseTreeSymbolTerminalRightCurlyBrace,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+
+        self.add_var_to_map(&ident_node, &ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolNodeExpression,
+            children: vec![ParseTreeNode {
+                symbol: ParseTreeSymbol::ParseTreeSymbolTerminalI32S,
+                children: vec![],
+                value: None,
+            }],
+            value: None,
+        }, &lower_bound_node);
+
+        Ok(ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolNodeFor,
+            children: vec![
+                terminal_for,
+                ident_node,
+                terminal_for_in,
+                lower_bound_node,
+                terminal_for_dot,
+                upper_bound_node,
+                terminal_left_curly_brace,
+                loop_statement_node,
+                terminal_right_curly_brace,
+            ],
+            value: None,
+        })
+    }
     
     fn update_var_to_map(&mut self, node_terminal_id: &ParseTreeNode, node_expr: &ParseTreeNode, ) {
         let name = node_terminal_id.value.as_ref().expect("Identifier should have a value").clone();
@@ -361,8 +454,9 @@ impl Parser {
         self.symbol_table.insert(name, VarEntry { var_type, var_value });
     }
 
-    fn add__var_to_map(&mut self, node_terminal_id: &ParseTreeNode, node_type: &ParseTreeNode, node_expr: &ParseTreeNode, ) {
-        let name = node_terminal_id.value.as_ref().expect("Identifier should have a value").clone();
+    fn add_var_to_map(&mut self, node_id_expr: &ParseTreeNode, node_type: &ParseTreeNode, node_expr: &ParseTreeNode, ) {
+        let name = node_id_expr.children.first().unwrap().value.as_ref().expect("Identifier should have a value").clone();
+        //let name = node_id_expr.value.as_ref().expect("Identifier should have a value").clone();
 
         let var_type = self.add_var_to_map_type_helper(node_type);
         let var_value = self.add_var_to_map_expression_helper(node_expr);
@@ -464,21 +558,27 @@ impl Parser {
             }
 
             ParseTreeSymbol::ParseTreeSymbolNodeVariableDeclaration => {
-                if let Some(terminal_id_node) = parse_tree.children.iter().
-                    find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier) {
-                    let name = terminal_id_node.value.as_ref().expect("Missing terminal");
-                    let entry = self.symbol_table.get(name).unwrap();
+                if let Some(node_expr) = parse_tree.children.iter().
+                    find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression) {
+                    if let Some(terminal_id_node) = node_expr.children.iter().
+                        find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier) {
 
-                    AbstractSyntaxTreeNode {
-                        symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration {
-                            name: name.to_string(),
-                            type_: entry.var_type.clone(),
-                            value: entry.var_value.clone(),
-                        },
-                        children: Vec::new(),
+                        let name = terminal_id_node.value.as_ref().expect("Missing terminal");
+                        let entry = self.symbol_table.get(name).unwrap();
+
+                        AbstractSyntaxTreeNode {
+                            symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration {
+                                name: name.to_string(),
+                                type_: entry.var_type.clone(),
+                                value: entry.var_value.clone(),
+                            },
+                            children: Vec::new(),
+                        }
+                    } else {
+                        panic!("Expression node has no terminal child");
                     }
                 } else {
-                    panic!("Variable node has no terminal identifier");
+                    panic!("Variable declaration node has no expression child");
                 }
             }
             
@@ -497,6 +597,51 @@ impl Parser {
                     }
                 } else {
                     panic!("Variable node has no terminal identifier");
+                }
+            }
+
+            ParseTreeSymbol::ParseTreeSymbolNodeFor => {
+                if let Some(id_expr_node) = parse_tree.children.iter().
+                    find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression) {
+                    if let Some(terminal_id_node) = id_expr_node.children.iter().
+                        find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier) {
+                        if let Some(lower_bound_expr_node) = parse_tree.children.iter().
+                            filter(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression).nth(1) {
+                            if let Some(lower_bound) = lower_bound_expr_node.children.iter().
+                                find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral) {
+                                if let Some(upper_bound_expr_node) = parse_tree.children.iter().
+                                    filter(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression).nth(2) {
+                                    if let Some(upper_bound) = upper_bound_expr_node.children.iter().
+                                        find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral) {
+                                        let name = terminal_id_node.value.as_ref().expect("Missing terminal");
+                                        let low = lower_bound.value.as_ref().unwrap().parse::<i32>().unwrap();
+                                        let high = upper_bound.value.as_ref().unwrap().parse::<i32>().unwrap();
+
+                                        AbstractSyntaxTreeNode {
+                                            symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolFor {
+                                                iterator_name: name.to_string(),
+                                                iterator_begin: Expr::Int(low),
+                                                iterator_end: Expr::Int(high),
+                                            },
+                                            children: vec![],
+                                        }
+                                    } else {
+                                        panic!("Upper bound has no terminal");
+                                    }
+                                } else {
+                                    panic!("Loop does not have an upper bound");
+                                }
+                            } else {
+                                panic!("Lower bound has no terminal");
+                            }
+                        } else {
+                            panic!("Loop does not have a lower bound");
+                        }
+                    } else {
+                        panic!("Loop has a null iterator");
+                    }
+                } else {
+                    panic!("Loop does not have an iterator");
                 }
             }
 

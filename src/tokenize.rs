@@ -10,6 +10,10 @@ pub enum TokenType {
     TokenTypeIdentifier,
     TokenTypeTypeI32S,
     TokenTypeFor,
+    TokenTypeForIn,
+    TokenTypeForTo,
+    TokenTypeLeftCurlyBrace,
+    TokenTypeRightCurlyBrace,
 }
 
 #[derive(Debug, PartialEq)]
@@ -58,6 +62,16 @@ impl Tokenizer {
                         token_type: TokenType::TokenTypeFor,
                         value: None
                     })
+                } else if buffer == ['i', 'n'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeForIn,
+                        value: None
+                    })
+                } else if buffer == ['t', 'o'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeForTo,
+                        value: None
+                    })
                 } else { // If not a keyword, it is an identifier
                     tokens.push(Token {
                         token_type: TokenType::TokenTypeIdentifier,
@@ -83,6 +97,18 @@ impl Tokenizer {
                 self.consume();
                 tokens.push(Token {
                     token_type: TokenType::TokenTypeEquals,
+                    value: None,
+                });
+            } else if self.current().unwrap() == '{' {
+                self.consume();
+                tokens.push(Token {
+                    token_type: TokenType::TokenTypeLeftCurlyBrace,
+                    value: None,
+                });
+            } else if self.current().unwrap() == '}' {
+                self.consume();
+                tokens.push(Token {
+                    token_type: TokenType::TokenTypeRightCurlyBrace,
                     value: None,
                 });
             } else if self.current().unwrap().is_ascii_whitespace() {
