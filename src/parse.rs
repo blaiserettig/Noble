@@ -20,6 +20,7 @@ pub enum AbstractSyntaxTreeSymbol {
         iterator_name: String,
         iterator_begin: Expr,
         iterator_end: Expr,
+        body: Vec<AbstractSyntaxTreeNode>,
     }
 }
 
@@ -601,50 +602,53 @@ impl Parser {
             }
 
             ParseTreeSymbol::ParseTreeSymbolNodeFor => {
-                if let Some(id_expr_node) = parse_tree.children.iter().
-                    find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression) {
-                    if let Some(terminal_id_node) = id_expr_node.children.iter().
-                        find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier) {
-                        if let Some(lower_bound_expr_node) = parse_tree.children.iter().
-                            filter(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression).nth(1) {
-                            if let Some(lower_bound) = lower_bound_expr_node.children.iter().
-                                find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral) {
-                                if let Some(upper_bound_expr_node) = parse_tree.children.iter().
-                                    filter(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression).nth(2) {
-                                    if let Some(upper_bound) = upper_bound_expr_node.children.iter().
-                                        find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral) {
-                                        let name = terminal_id_node.value.as_ref().expect("Missing terminal");
-                                        let low = lower_bound.value.as_ref().unwrap().parse::<i32>().unwrap();
-                                        let high = upper_bound.value.as_ref().unwrap().parse::<i32>().unwrap();
+                let mut expr_nodes = parse_tree.children
+                    .iter()
+                    .filter(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression);
 
-                                        AbstractSyntaxTreeNode {
-                                            symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolFor {
-                                                iterator_name: name.to_string(),
-                                                iterator_begin: Expr::Int(low),
-                                                iterator_end: Expr::Int(high),
-                                            },
-                                            children: vec![],
-                                        }
-                                    } else {
-                                        panic!("Upper bound has no terminal");
-                                    }
-                                } else {
-                                    panic!("Loop does not have an upper bound");
-                                }
-                            } else {
-                                panic!("Lower bound has no terminal");
-                            }
-                        } else {
-                            panic!("Loop does not have a lower bound");
-                        }
-                    } else {
-                        panic!("Loop has a null iterator");
-                    }
-                } else {
-                    panic!("Loop does not have an iterator");
+                let id_expr = expr_nodes.next().expect("Missing iterator expression");
+                let begin_expr = expr_nodes.next().expect("Missing begin expression");
+                let end_expr = expr_nodes.next().expect("Missing end expression");
+
+                let iterator_name = id_expr.children
+                    .iter()
+                    .find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier)
+                    .expect("Iterator missing identifier")
+                    .value.as_ref().unwrap().clone();
+
+                let iterator_begin = {
+                    let lit = begin_expr.children
+                        .iter()
+                        .find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral)
+                        .unwrap();
+                    Expr::Int(lit.value.as_ref().unwrap().parse().unwrap())
+                };
+
+                let iterator_end = {
+                    let lit = end_expr.children
+                        .iter()
+                        .find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral)
+                        .unwrap();
+                    Expr::Int(lit.value.as_ref().unwrap().parse().unwrap())
+                };
+
+                let body: Vec<AbstractSyntaxTreeNode> = parse_tree.children
+                    .iter()
+                    .filter(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeStatement)
+                    .map(|stmt| self.build_ast(stmt))
+                    .collect();
+
+                AbstractSyntaxTreeNode {
+                    symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolFor {
+                        iterator_name,
+                        iterator_begin,
+                        iterator_end,
+                        body,
+                    },
+                    children: vec![],
                 }
             }
-
+            
             _ => {
                 panic!("Unexpected parse tree node: {:?}", parse_tree.symbol);
             }

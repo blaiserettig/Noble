@@ -245,6 +245,7 @@ AbstractSyntaxTreeSymbolEntry
 ## Roadmap
 
 ### Short Term
+- [x] Assignment operator (`=`)
 - [ ] More primitive types (`f32`, `bool`, `char`)
 - [ ] Arithmetic expressions (`+`, `-`, `*`, `/`)
 - [ ] Boolean type and logical operations
@@ -254,7 +255,7 @@ AbstractSyntaxTreeSymbolEntry
 - [ ] Arrays and basic data structures
 - [ ] String literals and manipulation
 - [ ] Conditional statements (`if`/`else`)
-- [ ] Loops (`while`, `for`)
+- [x] Loops (`while`, `for`)
 
 ### Long Term
 - [ ] Functions and procedure calls

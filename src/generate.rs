@@ -54,8 +54,34 @@ impl Generator {
                 self.match_variable_helper(name, value, writer);
             }
             
-            AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolFor { iterator_name, iterator_begin, iterator_end } => {
+            AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolFor { iterator_name, iterator_begin, iterator_end, body } => {
+                self.declared_vars.insert(iterator_name.clone());
                 
+                let loop_label = format!("loop_begin_{}", iterator_name);
+                let end_label  = format!("loop_end_{}", iterator_name);
+                
+                self.generate_expr_into_register(iterator_begin, "eax", writer);
+                writeln!(writer, "    mov dword [{}], eax", iterator_name).unwrap();
+
+                writeln!(writer, "{}:", loop_label).unwrap();
+
+                writeln!(writer, "    mov eax, dword [{}]", iterator_name).unwrap();
+                self.generate_expr_into_register(iterator_end, "ebx", writer);
+                writeln!(writer, "    cmp eax, ebx").unwrap();
+                writeln!(writer, "    jg {}", end_label).unwrap();
+
+                for stmt in body {
+                    self.generate_x64(stmt, writer);
+                }
+
+                writeln!(writer, "    mov eax, dword [{}]", iterator_name).unwrap();
+                writeln!(writer, "    inc eax").unwrap();
+                writeln!(writer, "    mov dword [{}], eax", iterator_name).unwrap();
+
+                writeln!(writer, "    jmp {}", loop_label).unwrap();
+
+                writeln!(writer, "{}:", end_label).unwrap();
+
             }
         }
     }
@@ -68,6 +94,22 @@ impl Generator {
             Expr::Ident(ident) => {
                 writeln!(writer, "    mov eax, dword [{}]", ident).unwrap();
                 writeln!(writer, "    mov dword [{}], eax", name).unwrap();
+            }
+        }
+    }
+
+    fn generate_expr_into_register(
+        &mut self,
+        expr: &Expr,
+        reg: &str,
+        writer: &mut BufWriter<&File>,
+    ) {
+        match expr {
+            Expr::Int(i) => {
+                writeln!(writer, "    mov {}, {}", reg, i).unwrap();
+            }
+            Expr::Ident(name) => {
+                writeln!(writer, "    mov {}, dword [{}]", reg, name).unwrap();
             }
         }
     }
