@@ -2,3 +2,7 @@
 
 # IDE
 .idea/
+
+# Builds
+*.obj
+*.exe
