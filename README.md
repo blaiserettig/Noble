@@ -13,10 +13,11 @@ A minimal, educational programming language implemented in Rust that compiles to
 - **Complete Compilation Pipeline**: Lexing → Parsing → AST Generation → x86-64 Code Generation
 - **Type System**: Currently supports signed 32-bit integers (`i32s`)
 - **Variable Declaration and Assignment**: Store and retrieve values
+- **Control Flow**: For loops
 - **Program Exit with Return Values**: Control program termination
 - **Cross-Platform Assembly Output**: Generates NASM-compatible x86-64 assembly
-- **Comprehensive Error Handling**: Detailed error messages for parsing failures
-- **Symbol Table Management**: Tracks variable declarations and types
+- **Comprehensive Error Handling**: Detailed error messages for failures
+- **Symbol Table Management**: Tracks variable declarations and types across multiple scopes
 
 ## Language Syntax
 
@@ -28,16 +29,25 @@ i32s y = x;         // Variable assignment from another variable
 exit y;             // Exit program with return code
 ```
 
+```noble
+for i in 1 to 100 { 
+    ...             // // Supports user-defined iterator names and numeric ranges
+}
+```
+
 ### Grammar
 
 ```
-Entry Point → [Stmt]*
-[Stmt]      → [Exit] | [Variable]
-[Variable]  → [Type] [Ident] = [Expr] ;
-[Type]      → i32s
-[Ident]     → user-defined non-keyword
-[Exit]      → exit [Expr] ;
-[Expr]      → [Int_Lit] | [Ident]
+Entry Point    → [Stmt]*
+[Stmt]         → [Exit] | [VariableDec] | [VariableAsm] | [For]
+[VariableDec]  → [Type] [Ident] = [Expr] ;
+[VariableAsm]  → [Ident] = [Expr] ;
+[For]          → for [Ident] in [Int_Lit] to [Int_Lit] { [Stmt] }
+[Type]         → i32s
+[Ident]        → user-defined non-keyword
+[Exit]         → exit [Expr] ;
+[Expr]         → [Int_Lit] | [Ident]
+[Int_Lit]      → integer literal
 ```
 
 ## Architecture
@@ -76,7 +86,7 @@ x86-64 Assembly (.asm)
 ### Parser
 - **Recursive descent parser** following the formal grammar
 - **Two-phase approach**: Parse tree construction followed by AST generation
-- **Symbol table**: HashMap-based variable tracking with type information
+- **Symbol table**: Stack of HashMap-based variable tracking with type information
 - **Error recovery**: Detailed error messages with token context
 
 ### Code Generator
@@ -104,8 +114,12 @@ cargo build --release
 
 1. **Write a Noble program in the src/ directory** (`src/example.nbl`):
 ```noble
-i32s result = 42;
-exit result;
+i32s x = 0;
+for i in 0 to 10 {
+    x = i;
+}
+i32s y = x;
+exit y;
 ```
 
 2. **Compile to assembly**:
@@ -128,7 +142,10 @@ $LASTEXITCODE
 
 **Input** (`input.nbl`):
 ```noble
-i32s x = 1;
+i32s x = 0;
+for i in 0 to 10 {
+    x = i;
+}
 i32s y = x;
 exit y;
 ```
@@ -142,15 +159,32 @@ segment .text
 global mainCRTStartup
 
 mainCRTStartup:
-    mov dword [x], 1
+    mov eax, dword [i]
+    mov dword [x], eax
+    mov eax, 0
+    mov dword [i], eax
+loop_begin_i:
+    mov eax, dword [i]
+    mov ebx, 10
+    cmp eax, ebx
+    jg loop_end_i
+    mov eax, dword [i]
+    mov dword [x], eax
+    mov eax, dword [i]
+    inc eax
+    mov dword [i], eax
+    jmp loop_begin_i
+loop_end_i:
     mov eax, dword [x]
     mov dword [y], eax
     mov eax, dword [y]
     ret
 
 segment .bss
-y resd 1
 x resd 1
+y resd 1
+i resd 1
+
 ```
 
 **Intermediate Steps** (Tokenization):
@@ -159,8 +193,20 @@ Token { token_type: TokenTypeEntryPoint, value: None }
 Token { token_type: TokenTypeTypeI32S, value: None }
 Token { token_type: TokenTypeIdentifier, value: Some("x") }
 Token { token_type: TokenTypeEquals, value: None }
-Token { token_type: TokenTypeIntegerLiteral, value: Some("1") }
+Token { token_type: TokenTypeIntegerLiteral, value: Some("0") }
 Token { token_type: TokenTypeSemicolon, value: None }
+Token { token_type: TokenTypeFor, value: None }
+Token { token_type: TokenTypeIdentifier, value: Some("i") }
+Token { token_type: TokenTypeForIn, value: None }
+Token { token_type: TokenTypeIntegerLiteral, value: Some("0") }
+Token { token_type: TokenTypeForTo, value: None }
+Token { token_type: TokenTypeIntegerLiteral, value: Some("10") }
+Token { token_type: TokenTypeLeftCurlyBrace, value: None }
+Token { token_type: TokenTypeIdentifier, value: Some("x") }
+Token { token_type: TokenTypeEquals, value: None }
+Token { token_type: TokenTypeIdentifier, value: Some("i") }
+Token { token_type: TokenTypeSemicolon, value: None }
+Token { token_type: TokenTypeRightCurlyBrace, value: None }
 Token { token_type: TokenTypeTypeI32S, value: None }
 Token { token_type: TokenTypeIdentifier, value: Some("y") }
 Token { token_type: TokenTypeEquals, value: None }
@@ -169,6 +215,7 @@ Token { token_type: TokenTypeSemicolon, value: None }
 Token { token_type: TokenTypeExit, value: None }
 Token { token_type: TokenTypeIdentifier, value: Some("y") }
 Token { token_type: TokenTypeSemicolon, value: None }
+
 ```
 
 **Intermediate Steps** (Parsing):
@@ -177,32 +224,76 @@ ParseTreeSymbolNodeEntryPoint
 None
     ParseTreeSymbolNodeStatement
     None
-        ParseTreeSymbolNodeVariable
+        ParseTreeSymbolNodeVariableDeclaration
         None
             ParseTreeSymbolNodeType
             None
                 ParseTreeSymbolTerminalI32S
                 None
-            ParseTreeSymbolTerminalIdentifier
-            Some("x")
+            ParseTreeSymbolNodeExpression
+            None
+                ParseTreeSymbolTerminalIdentifier
+                Some("x")
             ParseTreeSymbolTerminalEquals
             None
             ParseTreeSymbolNodeExpression
             None
                 ParseTreeSymbolTerminalIntegerLiteral
-                Some("1")
+                Some("0")
             ParseTreeSymbolTerminalSemicolon
             None
     ParseTreeSymbolNodeStatement
     None
-        ParseTreeSymbolNodeVariable
+        ParseTreeSymbolNodeFor
+        None
+            ParseTreeSymbolTerminalFor
+            None
+            ParseTreeSymbolNodeExpression
+            None
+                ParseTreeSymbolTerminalIdentifier
+                Some("i")
+            ParseTreeSymbolTerminalForIn
+            None
+            ParseTreeSymbolNodeExpression
+            None
+                ParseTreeSymbolTerminalIntegerLiteral
+                Some("0")
+            ParseTreeSymbolTerminalForTo
+            None
+            ParseTreeSymbolNodeExpression
+            None
+                ParseTreeSymbolTerminalIntegerLiteral
+                Some("10")
+            ParseTreeSymbolTerminalLeftCurlyBrace
+            None
+            ParseTreeSymbolNodeStatement
+            None
+                ParseTreeSymbolNodeVariableAssignment
+                None
+                    ParseTreeSymbolTerminalIdentifier
+                    Some("x")
+                    ParseTreeSymbolTerminalEquals
+                    None
+                    ParseTreeSymbolNodeExpression
+                    None
+                        ParseTreeSymbolTerminalIdentifier
+                        Some("i")
+                    ParseTreeSymbolTerminalSemicolon
+                    None
+            ParseTreeSymbolTerminalRightCurlyBrace
+            None
+    ParseTreeSymbolNodeStatement
+    None
+        ParseTreeSymbolNodeVariableDeclaration
         None
             ParseTreeSymbolNodeType
             None
                 ParseTreeSymbolTerminalI32S
                 None
-            ParseTreeSymbolTerminalIdentifier
-            Some("y")
+            ParseTreeSymbolNodeExpression
+            None
+                ParseTreeSymbolTerminalIdentifier
+                Some("y")
             ParseTreeSymbolTerminalEquals
             None
             ParseTreeSymbolNodeExpression
@@ -223,12 +314,14 @@ None
                 Some("y")
             ParseTreeSymbolTerminalSemicolon
             None
+
 ```
 
 **Intermediate Steps** (Abstract Syntax Tree):
 ```ast
 AbstractSyntaxTreeSymbolEntry
-  AbstractSyntaxTreeSymbolVariableDeclaration { name: "x", type_: I32S, value: Int(1) }
+  AbstractSyntaxTreeSymbolVariableDeclaration { name: "x", type_: I32S, value: Ident("i") }
+  AbstractSyntaxTreeSymbolFor { iterator_name: "i", iterator_begin: Int(0), iterator_end: Int(10), body: [AbstractSyntaxTreeNode { symbol: AbstractSyntaxTreeSymbolVariableAssignment { name: "x", value: Ident("i") }, children: [] }] }
   AbstractSyntaxTreeSymbolVariableDeclaration { name: "y", type_: I32S, value: Ident("x") }
   AbstractSyntaxTreeSymbolExit(Ident("y"))
 ```
@@ -246,6 +339,7 @@ AbstractSyntaxTreeSymbolEntry
 
 ### Short Term
 - [x] Assignment operator (`=`)
+- [x] Symbol table refactor to allow scoping ({})
 - [ ] More primitive types (`f32`, `bool`, `char`)
 - [ ] Arithmetic expressions (`+`, `-`, `*`, `/`)
 - [ ] Boolean type and logical operations

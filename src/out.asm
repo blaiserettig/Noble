@@ -21,8 +21,12 @@ loop_begin_i:
     mov dword [i], eax
     jmp loop_begin_i
 loop_end_i:
+    mov eax, dword [x]
+    mov dword [y], eax
+    mov eax, dword [y]
     ret
 
 segment .bss
-i resd 1
 x resd 1
+y resd 1
+i resd 1
