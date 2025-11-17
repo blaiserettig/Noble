@@ -274,7 +274,7 @@ impl Parser {
         self.consume();
 
         //self.add_var_to_map(&ident_terminal, &type_node, &expr_node);
-        
+
         let var_name = ident_terminal.children.first().unwrap().value.as_ref().expect("Identifier should have a value").clone();
         let var_type = self.match_type_in_scope(&type_node);
         let var_value = self.match_expression_in_scope(&expr_node);
@@ -333,6 +333,9 @@ impl Parser {
 
         let var_name = ident_terminal.value.as_ref().expect("Identifier should have a value").clone();
         let var_value = self.match_expression_in_scope(&expr_node).clone();
+        if self.lookup_in_scope(&var_name).is_none() {
+            return Err(format!("Undefined variable {}", var_name));
+        }
         self.update_in_scope(&var_name, var_value)?;
 
         Ok(ParseTreeNode {
@@ -418,6 +421,12 @@ impl Parser {
         self.consume();
         self.push_scope();
 
+        // push iterator while inside the new scope
+        let var_name = ident_node.children.first().unwrap().value.as_ref().expect("Identifier should have a value").clone();
+        let var_type = Type::I32S;
+        let var_value = self.match_expression_in_scope(&lower_bound_node);
+        self.insert_in_scope(var_name, VarEntry {var_type, var_value});
+
         let loop_statement_node = self.parse_statement()?;
 
         if self.current().unwrap().token_type != TokenType::TokenTypeRightCurlyBrace {
@@ -430,7 +439,7 @@ impl Parser {
         };
         self.consume();
         self.pop_scope();
-        
+
         /*self.add_var_to_map(&ident_node, &ParseTreeNode {
             symbol: ParseTreeSymbol::ParseTreeSymbolNodeExpression,
             children: vec![ParseTreeNode {
@@ -440,11 +449,6 @@ impl Parser {
             }],
             value: None,
         }, &lower_bound_node);*/
-        
-        let var_name = ident_node.children.first().unwrap().value.as_ref().expect("Identifier should have a value").clone();
-        let var_type = Type::I32S;
-        let var_value = self.match_expression_in_scope(&lower_bound_node);
-        self.insert_in_scope(var_name, VarEntry {var_type, var_value});
 
         Ok(ParseTreeNode {
             symbol: ParseTreeSymbol::ParseTreeSymbolNodeFor,
@@ -479,7 +483,7 @@ impl Parser {
 
         self.symbol_table.insert(name, VarEntry { var_type, var_value, });
     }*/
-    
+
     pub fn print_ast(&mut self, node: &AbstractSyntaxTreeNode, indent: usize) {
         for _i in 0..indent {
             print!("  ");
@@ -695,6 +699,9 @@ impl Parser {
             },
             ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier => {
                 let ident = child.value.as_ref().unwrap().clone();
+                if self.lookup_in_scope(&ident).is_none() {
+                    panic!("Undefined identifier {}", ident);
+                }
                 Expr::Ident(ident)
             }
             _ => panic!("Unsupported expression type"),
