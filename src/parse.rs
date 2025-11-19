@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use crate::tokenize::{Token, TokenType};
 use std::vec;
-use crate::parse::ParseTreeSymbol::{ParseTreeSymbolTerminalForTo, ParseTreeSymbolTerminalLeftCurlyBrace, ParseTreeSymbolTerminalRightCurlyBrace};
 
 #[derive(Debug)]
 pub enum AbstractSyntaxTreeSymbol {
@@ -402,7 +401,7 @@ impl Parser {
             return Err(format!("MissingTokenError: Expected 'for_dot', found: {:?}", self.current().unwrap().token_type));
         }
         let terminal_for_dot = ParseTreeNode {
-            symbol: ParseTreeSymbolTerminalForTo,
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalForTo,
             children: vec![],
             value: None,
         };
@@ -414,7 +413,7 @@ impl Parser {
             return Err(format!("MissingTokenError: Expected 'left_curly_brace', found: {:?}", self.current().unwrap().token_type));
         }
         let terminal_left_curly_brace = ParseTreeNode {
-            symbol: ParseTreeSymbolTerminalLeftCurlyBrace,
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalLeftCurlyBrace,
             children: vec![],
             value: None,
         };
@@ -433,7 +432,7 @@ impl Parser {
             return Err(format!("MissingTokenError: Expected 'right_curly_brace', found: {:?}", self.current().unwrap().token_type));
         }
         let terminal_right_curly_brace = ParseTreeNode {
-            symbol: ParseTreeSymbolTerminalRightCurlyBrace,
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalRightCurlyBrace,
             children: vec![],
             value: None,
         };
