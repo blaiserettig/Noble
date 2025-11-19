@@ -23,10 +23,12 @@ loop_begin_i:
 loop_end_i:
     mov eax, dword [x]
     mov dword [y], eax
+    mov dword [z], 1068876431
     mov eax, dword [y]
     ret
 
 segment .bss
 y resd 1
-x resd 1
+z resd 1
 i resd 1
+x resd 1

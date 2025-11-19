@@ -9,6 +9,8 @@ pub enum TokenType {
     TokenTypeEquals,
     TokenTypeIdentifier,
     TokenTypeTypeI32S,
+    TokenTypeTypeF32S,
+    TokenTypeFloatLiteral,
     TokenTypeFor,
     TokenTypeForIn,
     TokenTypeForTo,
@@ -39,7 +41,10 @@ impl Tokenizer {
         let mut tokens: Vec<Token> = Vec::new();
         let mut buffer: Vec<char> = Vec::new();
 
-        tokens.push(Token {token_type: TokenType::TokenTypeEntryPoint, value: None});
+        tokens.push(Token {
+            token_type: TokenType::TokenTypeEntryPoint,
+            value: None,
+        });
 
         while !self.is_at_end() {
             if self.current().unwrap().is_ascii_alphabetic() {
@@ -57,22 +62,28 @@ impl Tokenizer {
                         token_type: TokenType::TokenTypeTypeI32S,
                         value: None,
                     });
+                } else if buffer == ['f', '3', '2', 's'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeTypeF32S,
+                        value: None,
+                    });
                 } else if buffer == ['f', 'o', 'r'] {
                     tokens.push(Token {
                         token_type: TokenType::TokenTypeFor,
-                        value: None
+                        value: None,
                     })
                 } else if buffer == ['i', 'n'] {
                     tokens.push(Token {
                         token_type: TokenType::TokenTypeForIn,
-                        value: None
+                        value: None,
                     })
                 } else if buffer == ['t', 'o'] {
                     tokens.push(Token {
                         token_type: TokenType::TokenTypeForTo,
-                        value: None
+                        value: None,
                     })
-                } else { // If not a keyword, it is an identifier
+                } else {
+                    // If not a keyword, it is an identifier
                     tokens.push(Token {
                         token_type: TokenType::TokenTypeIdentifier,
                         value: Some(buffer.iter().collect()),
@@ -83,10 +94,21 @@ impl Tokenizer {
                 while self.current() != None && self.current().unwrap().is_ascii_digit() {
                     buffer.push(self.consume());
                 }
-                tokens.push(Token {
-                    token_type: TokenType::TokenTypeIntegerLiteral,
-                    value: Some(buffer.iter().collect()),
-                });
+                if self.current() != None && self.current().unwrap() == '.' {
+                    buffer.push(self.consume());
+                    while self.current() != None && self.current().unwrap().is_ascii_digit() {
+                        buffer.push(self.consume());
+                    }
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeFloatLiteral,
+                        value: Some(buffer.iter().collect()),
+                    });
+                } else {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeIntegerLiteral,
+                        value: Some(buffer.iter().collect()),
+                    });
+                }
             } else if self.current().unwrap() == ';' {
                 self.consume();
                 tokens.push(Token {
@@ -133,7 +155,7 @@ impl Tokenizer {
     pub fn is_at_end(&self) -> bool {
         self.index >= self.chars.len()
     }
-    
+
     pub fn consume(&mut self) -> char {
         let c: char = self.chars[self.index];
         self.index += 1;
