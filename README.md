@@ -24,15 +24,16 @@ A minimal, educational programming language implemented in Rust that compiles to
 Noble follows a simple, C-like syntax:
 
 ```noble
-i32s x = 42;        // Variable declaration and initialization
-i32s y = x;         // Variable assignment from another variable
-exit y;             // Exit program with return code
-```
-
-```noble
-for i in 1 to 100 { 
-    ...             // // Supports user-defined iterator names and numeric ranges
+i32s x = 0;
+for i in 0 to 10 {              // User-defined iterator names
+    x = x + i;                  // Variable assignment from another variable
 }
+{                               // User-defined blocks
+    bool y = false;             // Will not conflict with the later defined y
+    f32s z = 3.14159;
+}
+i32s y = ((x + 10) * 5) / 2;    // Correct order of operations
+exit y;                         // Exit with return code
 ```
 
 ### Grammar
@@ -88,9 +89,8 @@ x86-64 Assembly (.asm)
 ## Implementation Details
 
 ### Tokenizer
-- **Character-by-character parsing** with lookahead support
-- **Keyword recognition**: `exit`, `i32s`
-- **Token types**: Identifiers, integer literals, operators, punctuation
+- **Character-by-character lexing** with lookahead support
+- **Keyword recognition**
 - **Error handling**: Graceful failure on unrecognized characters
 
 ### Parser

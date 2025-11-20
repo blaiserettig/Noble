@@ -1,3 +1,10 @@
-i32s x = 5;
-x = (x + 5) * 2;
-exit x;
+i32s x = 0;
+for i in 0 to 10 {
+    x = x + i;
+}
+{
+    bool y = false;
+    f32s z = 3.14159;
+}
+i32s y = ((x + 10) * 5) / 2;
+exit y;
