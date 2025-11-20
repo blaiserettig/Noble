@@ -551,8 +551,6 @@ impl Parser {
         };
         self.consume();
 
-        //self.add_var_to_map(&ident_terminal, &type_node, &expr_node);
-
         let var_name = self
             .find_terminal(&ident_terminal)
             .value
@@ -560,18 +558,6 @@ impl Parser {
             .expect("Identifier should have a value")
             .clone();
         
-        /*let var_name = ident_terminal
-            .children
-            .first()
-            .unwrap()
-            .children
-            .iter()
-            .find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier)
-            .unwrap()
-            .value
-            .as_ref()
-            .expect("Identifier should have a value")
-            .clone();*/
         let var_type = self.match_type_in_scope(&type_node);
         let var_value = self.match_expression_in_scope(&expr_node);
         self.insert_in_scope(
@@ -645,9 +631,7 @@ impl Parser {
             value: None,
         };
         self.consume();
-
-        //self.update_var_to_map(&ident_terminal, &expr_node);
-
+        
         let var_name = ident_terminal
             .value
             .as_ref()
@@ -778,7 +762,6 @@ impl Parser {
         self.push_scope();
 
         // push iterator while inside the new scope
-        
         let var_name = self
             .find_terminal(&ident_node)
             .value
@@ -786,14 +769,6 @@ impl Parser {
             .expect("Identifier should have a value")
             .clone();
         
-        /*let var_name = ident_node
-            .children
-            .first()
-            .unwrap()
-            .value
-            .as_ref()
-            .expect("Identifier should have a value")
-            .clone();*/
         let var_type = Type::I32S;
         let var_value = self.match_expression_in_scope(&lower_bound_node);
         self.insert_in_scope(
@@ -819,17 +794,7 @@ impl Parser {
         };
         self.consume();
         self.pop_scope();
-
-        /*self.add_var_to_map(&ident_node, &ParseTreeNode {
-            symbol: ParseTreeSymbol::ParseTreeSymbolNodeExpression,
-            children: vec![ParseTreeNode {
-                symbol: ParseTreeSymbol::ParseTreeSymbolTerminalI32S,
-                children: vec![],
-                value: None,
-            }],
-            value: None,
-        }, &lower_bound_node);*/
-
+        
         Ok(ParseTreeNode {
             symbol: ParseTreeSymbol::ParseTreeSymbolNodeFor,
             children: vec![
@@ -846,24 +811,7 @@ impl Parser {
             value: None,
         })
     }
-
-    /*fn update_var_to_map(&mut self, node_terminal_id: &ParseTreeNode, node_expr: &ParseTreeNode, ) {
-        let name = node_terminal_id.value.as_ref().expect("Identifier should have a value").clone();
-        let var_type = self.symbol_table.get(&name).unwrap().var_type.clone();
-        let var_value = self.add_var_to_map_expression_helper(node_expr).clone();
-
-        self.symbol_table.insert(name, VarEntry { var_type, var_value });
-    }*/
-
-    /*fn add_var_to_map(&mut self, node_id_expr: &ParseTreeNode, node_type: &ParseTreeNode, node_expr: &ParseTreeNode, ) {
-        let name = node_id_expr.children.first().unwrap().value.as_ref().expect("Identifier should have a value").clone();
-
-        let var_type = self.add_var_to_map_type_helper(node_type);
-        let var_value = self.add_var_to_map_expression_helper(node_expr);
-
-        self.symbol_table.insert(name, VarEntry { var_type, var_value, });
-    }*/
-
+    
     pub fn print_ast(&mut self, node: &AbstractSyntaxTreeNode, indent: usize) {
         for _i in 0..indent {
             print!("  ");
@@ -1015,16 +963,6 @@ impl Parser {
                     .as_ref()
                     .unwrap()
                     .clone();
-                
-                /*let iterator_name = id_expr
-                    .children
-                    .iter()
-                    .find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier)
-                    .expect("Iterator missing identifier")
-                    .value
-                    .as_ref()
-                    .unwrap()
-                    .clone();*/
 
                 let iterator_begin = {
                     let lit = self.find_terminal(&begin_expr);
