@@ -856,7 +856,16 @@ impl Parser {
         };
         self.consume();
 
-        let statement_node = self.parse_statement()?;
+        let mut statements = Vec::new();
+
+        while let Some(tok) = self.current() {
+            if tok.token_type == TokenType::TokenTypeRightCurlyBrace {
+                break; // end of block
+            }
+
+            let stmt = self.parse_statement()?;
+            statements.push(stmt);
+        }
 
         if self.current().unwrap().token_type != TokenType::TokenTypeRightCurlyBrace {
             return Err(format!(
@@ -871,13 +880,14 @@ impl Parser {
         };
         self.consume();
 
+        let mut children = Vec::new();
+        children.push(left_bracket_terminal);
+        children.extend(statements);
+        children.push(right_bracket_terminal);
+        
         Ok(ParseTreeNode {
             symbol: ParseTreeSymbol::ParseTreeSymbolNodeBlock,
-            children: vec![
-                left_bracket_terminal,
-                statement_node,
-                right_bracket_terminal,
-            ],
+            children,
             value: None,
         })
     }
