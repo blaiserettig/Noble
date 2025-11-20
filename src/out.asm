@@ -30,7 +30,7 @@ loop_end_i:
 
 segment .bss
 i resd 1
-y resd 1
-z resd 1
-x resd 1
 b resd 1
+y resd 1
+x resd 1
+z resd 1

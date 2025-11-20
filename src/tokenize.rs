@@ -20,6 +20,8 @@ pub enum TokenType {
     TokenTypeRightCurlyBrace,
     TokenTypePlus,
     TokenTypeMinus,
+    TokenTypeMultiply,
+    TokenTypeDivide,
     TokenTypeLessThan,
     TokenTypeLessThanOrEqual,
     TokenTypeGreaterThan,
@@ -206,6 +208,18 @@ impl Tokenizer {
                 self.consume();
                 tokens.push(Token {
                     token_type: TokenType::TokenTypeMinus,
+                    value: None,
+                });
+            } else if self.current().unwrap() == '*' {
+                self.consume();
+                tokens.push(Token {
+                    token_type: TokenType::TokenTypeMultiply,
+                    value: None,
+                });
+            } else if self.current().unwrap() == '/' {
+                self.consume();
+                tokens.push(Token {
+                    token_type: TokenType::TokenTypeDivide,
                     value: None,
                 });
             } else if self.current().unwrap() == '(' {

@@ -43,6 +43,7 @@ pub enum ParseTreeSymbol {
     ParseTreeSymbolNodeEquality,
     ParseTreeSymbolNodeComparison,
     ParseTreeSymbolNodeAdd,
+    ParseTreeSymbolNodeMul,
     ParseTreeSymbolNodePrimary,
     ParseTreeSymbolTerminalExit,
     ParseTreeSymbolTerminalSemicolon,
@@ -61,6 +62,8 @@ pub enum ParseTreeSymbol {
     ParseTreeSymbolTerminalRightCurlyBrace,
     ParseTreeSymbolTerminalPlus,
     ParseTreeSymbolTerminalMinus,
+    ParseTreeSymbolTerminalStar,
+    ParseTreeSymbolTerminalSlash,
     ParseTreeSymbolTerminalLessThan,
     ParseTreeSymbolTerminalLessThanOrEqual,
     ParseTreeSymbolTerminalGreaterThan,
@@ -364,9 +367,9 @@ impl Parser {
         Ok(left)
     }
 
-    // Add → Primary (("+" | "-") Primary)*
+    // Add → → Mul (("+" | "-") Mul)*
     fn parse_add(&mut self) -> Result<ParseTreeNode, String> {
-        let mut left = self.parse_primary()?;
+        let mut left = self.parse_mul()?;
 
         while let Some(token) = self.current() {
             match token.token_type {
@@ -387,7 +390,7 @@ impl Parser {
                     };
                     self.consume();
 
-                    let right = self.parse_primary()?;
+                    let right = self.parse_mul()?;
 
                     left = ParseTreeNode {
                         symbol: ParseTreeSymbol::ParseTreeSymbolNodeAdd,
@@ -399,6 +402,44 @@ impl Parser {
             }
         }
 
+        Ok(left)
+    }
+    
+    // Mul → Primary (("*" | "/") Primary)*
+    fn parse_mul(&mut self) -> Result<ParseTreeNode, String> {
+        let mut left = self.parse_primary()?;
+
+        while let Some(token) = self.current() {
+            match token.token_type {
+                TokenType::TokenTypeMultiply | TokenType::TokenTypeDivide => {
+                    let op_type = token.token_type;
+                    let op_terminal = ParseTreeNode {
+                        symbol: match op_type {
+                            TokenType::TokenTypeMultiply => {
+                                ParseTreeSymbol::ParseTreeSymbolTerminalStar
+                            }
+                            TokenType::TokenTypeDivide => {
+                                ParseTreeSymbol::ParseTreeSymbolTerminalSlash
+                            }
+                            _ => unreachable!(),
+                        },
+                        children: Vec::new(),
+                        value: None,
+                    };
+                    self.consume();
+
+                    let right = self.parse_primary()?;
+
+                    left = ParseTreeNode {
+                        symbol: ParseTreeSymbol::ParseTreeSymbolNodeMul,
+                        children: vec![left, op_terminal, right],
+                        value: None,
+                    };
+                }
+                _ => break,
+            }
+        }
+        
         Ok(left)
     }
 
