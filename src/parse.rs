@@ -21,6 +21,9 @@ pub enum AbstractSyntaxTreeSymbol {
         iterator_end: Expr,
         body: Vec<AbstractSyntaxTreeNode>,
     },
+    AbstractSyntaxTreeSymbolBlock {
+        body: Vec<AbstractSyntaxTreeNode>,
+    }
 }
 
 #[derive(Debug)]
@@ -229,6 +232,10 @@ impl Parser {
             }
             TokenType::TokenTypeFor => {
                 statement_node.children.push(self.parse_for()?);
+                Ok(statement_node)
+            }
+            TokenType::TokenTypeLeftCurlyBrace => {
+                statement_node.children.push(self.parse_block()?);
                 Ok(statement_node)
             }
             _ => Err(format!(
@@ -1048,6 +1055,23 @@ impl Parser {
                         iterator_name,
                         iterator_begin,
                         iterator_end,
+                        body,
+                    },
+                    children: vec![],
+                }
+            }
+            
+            ParseTreeSymbol::ParseTreeSymbolNodeBlock => {
+                let mut stmt_nodes = Vec::new();
+                self.find_statements(parse_tree, &mut stmt_nodes);
+
+                let body: Vec<AbstractSyntaxTreeNode> =
+                    stmt_nodes.into_iter()
+                        .map(|stmt| self.build_ast(stmt))
+                        .collect();
+
+                AbstractSyntaxTreeNode {
+                    symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolBlock {
                         body,
                     },
                     children: vec![],

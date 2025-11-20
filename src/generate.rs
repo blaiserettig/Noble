@@ -116,6 +116,12 @@ impl Generator {
 
                 writeln!(writer, "{}:", end_label).unwrap();
             }
+            
+            AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolBlock { body } => {
+                for stmt in body {
+                    self.generate_x64(stmt, writer);
+                }
+            }
         }
     }
 
