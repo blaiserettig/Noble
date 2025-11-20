@@ -1,6 +1,6 @@
 use std::process::exit;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TokenType {
     TokenTypeEntryPoint,
     TokenTypeExit,
@@ -18,6 +18,16 @@ pub enum TokenType {
     TokenTypeForTo,
     TokenTypeLeftCurlyBrace,
     TokenTypeRightCurlyBrace,
+    TokenTypePlus,
+    TokenTypeMinus,
+    TokenTypeLessThan,
+    TokenTypeLessThanOrEqual,
+    TokenTypeGreaterThan,
+    TokenTypeGreaterThanOrEqual,
+    TokenTypeEqualsEquals,
+    TokenTypeNotEquals,
+    TokenTypeLeftParen,
+    TokenTypeRightParen,
 }
 
 #[derive(Debug, PartialEq)]
@@ -134,8 +144,80 @@ impl Tokenizer {
                 });
             } else if self.current().unwrap() == '=' {
                 self.consume();
+                if self.current() == Some('=') {
+                    self.consume();
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeEqualsEquals,
+                        value: None,
+                    });
+                } else {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeEquals,
+                        value: None,
+                    });
+                }
+            } else if self.current().unwrap() == '!' {
+                self.consume();
+                if self.current() == Some('=') {
+                    self.consume();
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeNotEquals,
+                        value: None,
+                    });
+                } else {
+                    eprintln!("{:?}", "Tokenization Error: '!' must be followed by '='");
+                    exit(1);
+                }
+            } else if self.current().unwrap() == '<' {
+                self.consume();
+                if self.current() == Some('=') {
+                    self.consume();
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeLessThanOrEqual,
+                        value: None,
+                    });
+                } else {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeLessThan,
+                        value: None,
+                    });
+                }
+            } else if self.current().unwrap() == '>' {
+                self.consume();
+                if self.current() == Some('=') {
+                    self.consume();
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeGreaterThanOrEqual,
+                        value: None,
+                    });
+                } else {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeGreaterThan,
+                        value: None,
+                    });
+                }
+            } else if self.current().unwrap() == '+' {
+                self.consume();
                 tokens.push(Token {
-                    token_type: TokenType::TokenTypeEquals,
+                    token_type: TokenType::TokenTypePlus,
+                    value: None,
+                });
+            } else if self.current().unwrap() == '-' {
+                self.consume();
+                tokens.push(Token {
+                    token_type: TokenType::TokenTypeMinus,
+                    value: None,
+                });
+            } else if self.current().unwrap() == '(' {
+                self.consume();
+                tokens.push(Token {
+                    token_type: TokenType::TokenTypeLeftParen,
+                    value: None,
+                });
+            } else if self.current().unwrap() == ')' {
+                self.consume();
+                tokens.push(Token {
+                    token_type: TokenType::TokenTypeRightParen,
                     value: None,
                 });
             } else if self.current().unwrap() == '{' {
