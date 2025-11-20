@@ -45,7 +45,9 @@ pub enum ParseTreeSymbol {
     ParseTreeSymbolTerminalEquals,
     ParseTreeSymbolTerminalI32S,
     ParseTreeSymbolTerminalF32S,
+    ParseTreeSymbolTerminalBool,
     ParseTreeSymbolTerminalFloatLiteral,
+    ParseTreeSymbolTerminalBooleanLiteral,
     ParseTreeSymbolTerminalIdentifier,
     ParseTreeSymbolTerminalFor,
     ParseTreeSymbolTerminalForIn,
@@ -65,12 +67,14 @@ pub struct ParseTreeNode {
 pub enum Type {
     I32S,
     F32S,
+    Bool,
 }
 
 #[derive(Debug, Clone)]
 pub enum Expr {
     Int(i32),
     Float(f32),
+    Bool(bool),
     Ident(String),
 }
 
@@ -176,6 +180,12 @@ impl Parser {
                     .push(self.parse_variable_declaration()?);
                 Ok(statement_node)
             }
+            TokenType::TokenTypeTypeBool => {
+                statement_node
+                    .children
+                    .push(self.parse_variable_declaration()?);
+                Ok(statement_node)
+            }
             TokenType::TokenTypeIdentifier => {
                 statement_node
                     .children
@@ -242,6 +252,12 @@ impl Parser {
 
             TokenType::TokenTypeFloatLiteral => ParseTreeNode {
                 symbol: ParseTreeSymbol::ParseTreeSymbolTerminalFloatLiteral,
+                children: Vec::new(),
+                value: token.value.clone(),
+            },
+
+            TokenType::TokenTypeBooleanLiteral => ParseTreeNode {
+                symbol: ParseTreeSymbol::ParseTreeSymbolTerminalBooleanLiteral,
                 children: Vec::new(),
                 value: token.value.clone(),
             },
@@ -433,6 +449,20 @@ impl Parser {
                 symbol: ParseTreeSymbol::ParseTreeSymbolNodeType,
                 children: vec![ParseTreeNode {
                     symbol: ParseTreeSymbol::ParseTreeSymbolTerminalF32S,
+                    children: Vec::new(),
+                    value: None,
+                }],
+                value: None,
+            };
+            self.consume();
+            Ok(node)
+        } else if self.current() != None
+            && self.current().unwrap().token_type == TokenType::TokenTypeTypeBool
+        {
+            let node = ParseTreeNode {
+                symbol: ParseTreeSymbol::ParseTreeSymbolNodeType,
+                children: vec![ParseTreeNode {
+                    symbol: ParseTreeSymbol::ParseTreeSymbolTerminalBool,
                     children: Vec::new(),
                     value: None,
                 }],
@@ -652,6 +682,15 @@ impl Parser {
                                     .unwrap();
                                 Expr::Float(v)
                             }
+                            ParseTreeSymbol::ParseTreeSymbolTerminalBooleanLiteral => {
+                                let v = value_child_node
+                                    .value
+                                    .as_ref()
+                                    .unwrap()
+                                    .parse::<bool>()
+                                    .unwrap();
+                                Expr::Bool(v)
+                            }
                             ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier => {
                                 let name = value_child_node.value.as_ref().unwrap().to_string();
                                 Expr::Ident(name)
@@ -824,6 +863,7 @@ impl Parser {
         match node.children.first().unwrap().symbol {
             ParseTreeSymbol::ParseTreeSymbolTerminalI32S => Type::I32S,
             ParseTreeSymbol::ParseTreeSymbolTerminalF32S => Type::F32S,
+            ParseTreeSymbol::ParseTreeSymbolTerminalBool => Type::Bool,
             _ => panic!("Unsupported type node"),
         }
     }
@@ -838,6 +878,10 @@ impl Parser {
             ParseTreeSymbol::ParseTreeSymbolTerminalFloatLiteral => {
                 let value = child.value.as_ref().unwrap().parse::<f32>().unwrap();
                 Expr::Float(value)
+            }
+            ParseTreeSymbol::ParseTreeSymbolTerminalBooleanLiteral => {
+                let value = child.value.as_ref().unwrap().parse::<bool>().unwrap();
+                Expr::Bool(value)
             }
             ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier => {
                 let ident = child.value.as_ref().unwrap().clone();

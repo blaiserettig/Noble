@@ -58,6 +58,10 @@ impl Generator {
                     let bits = f.to_bits();
                     writeln!(writer, "    mov eax, {}", bits).unwrap();
                 }
+                Expr::Bool(b) => {
+                    let val = if *b { 1 } else { 0 };
+                    writeln!(writer, "    mov eax, {}", val).unwrap();
+                }
             },
 
             AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration {
@@ -130,6 +134,10 @@ impl Generator {
                 let bits = f.to_bits();
                 writeln!(writer, "    mov dword [{}], {}", name, bits).unwrap();
             }
+            Expr::Bool(b) => {
+                let val = if *b { 1 } else { 0 };
+                writeln!(writer, "    mov dword [{}], {}", name, val).unwrap();
+            }
         }
     }
 
@@ -149,6 +157,10 @@ impl Generator {
             Expr::Float(f) => {
                 let bits = f.to_bits();
                 writeln!(writer, "    mov {}, {}", reg, bits).unwrap();
+            }
+            Expr::Bool(b) => {
+                let val = if *b { 1 } else { 0 };
+                writeln!(writer, "    mov {}, {}", reg, val).unwrap();
             }
         }
     }

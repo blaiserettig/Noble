@@ -10,7 +10,9 @@ pub enum TokenType {
     TokenTypeIdentifier,
     TokenTypeTypeI32S,
     TokenTypeTypeF32S,
+    TokenTypeTypeBool,
     TokenTypeFloatLiteral,
+    TokenTypeBooleanLiteral,
     TokenTypeFor,
     TokenTypeForIn,
     TokenTypeForTo,
@@ -66,6 +68,21 @@ impl Tokenizer {
                     tokens.push(Token {
                         token_type: TokenType::TokenTypeTypeF32S,
                         value: None,
+                    });
+                } else if buffer == ['b', 'o', 'o', 'l'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeTypeBool,
+                        value: None,
+                    });
+                } else if buffer == ['t', 'r', 'u', 'e'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeBooleanLiteral,
+                        value: Some("true".to_string()),
+                    });
+                } else if buffer == ['f', 'a', 'l', 's', 'e'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeBooleanLiteral,
+                        value: Some("false".to_string()),
                     });
                 } else if buffer == ['f', 'o', 'r'] {
                     tokens.push(Token {
