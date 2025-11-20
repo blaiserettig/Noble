@@ -753,12 +753,7 @@ impl Parser {
                 self.current().unwrap().token_type
             ));
         }
-        let terminal_left_curly_brace = ParseTreeNode {
-            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalLeftCurlyBrace,
-            children: vec![],
-            value: None,
-        };
-        self.consume();
+        
         self.push_scope();
 
         // push iterator while inside the new scope
@@ -768,7 +763,7 @@ impl Parser {
             .as_ref()
             .expect("Identifier should have a value")
             .clone();
-        
+
         let var_type = Type::I32S;
         let var_value = self.match_expression_in_scope(&lower_bound_node);
         self.insert_in_scope(
@@ -778,21 +773,8 @@ impl Parser {
                 var_value,
             },
         );
-
-        let loop_statement_node = self.parse_statement()?;
-
-        if self.current().unwrap().token_type != TokenType::TokenTypeRightCurlyBrace {
-            return Err(format!(
-                "MissingTokenError: Expected 'right_curly_brace', found: {:?}",
-                self.current().unwrap().token_type
-            ));
-        }
-        let terminal_right_curly_brace = ParseTreeNode {
-            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalRightCurlyBrace,
-            children: vec![],
-            value: None,
-        };
-        self.consume();
+        
+        let block_node = self.parse_block()?;
         self.pop_scope();
         
         Ok(ParseTreeNode {
@@ -804,9 +786,47 @@ impl Parser {
                 lower_bound_node,
                 terminal_for_dot,
                 upper_bound_node,
-                terminal_left_curly_brace,
-                loop_statement_node,
-                terminal_right_curly_brace,
+                block_node,
+            ],
+            value: None,
+        })
+    }
+    
+    fn parse_block(&mut self) -> Result<ParseTreeNode, String> {
+        if self.current().unwrap().token_type != TokenType::TokenTypeLeftCurlyBrace {
+            return Err(format!(
+                "MissingTokenError: Expected 'left_curly_brace', found: {:?}",
+                self.current().unwrap().token_type
+            ));
+        }
+        let left_bracket_terminal = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalLeftCurlyBrace,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+        
+        let statement_node = self.parse_statement()?;
+
+        if self.current().unwrap().token_type != TokenType::TokenTypeRightCurlyBrace {
+            return Err(format!(
+                "MissingTokenError: Expected 'right_curly_brace', found: {:?}",
+                self.current().unwrap().token_type
+            ));
+        }
+        let right_bracket_terminal = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalRightCurlyBrace,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+        
+        Ok(ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolNodeBlock,
+            children: vec![
+                left_bracket_terminal,
+                statement_node,
+                right_bracket_terminal,
             ],
             value: None,
         })
@@ -974,12 +994,13 @@ impl Parser {
                     Expr::Int(lit.value.as_ref().unwrap().parse().unwrap())
                 };
 
-                let body: Vec<AbstractSyntaxTreeNode> = parse_tree
-                    .children
-                    .iter()
-                    .filter(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeStatement)
-                    .map(|stmt| self.build_ast(stmt))
-                    .collect();
+                let mut stmt_nodes = Vec::new();
+                self.find_statements(parse_tree, &mut stmt_nodes);
+
+                let body: Vec<AbstractSyntaxTreeNode> =
+                    stmt_nodes.into_iter()
+                        .map(|stmt| self.build_ast(stmt))
+                        .collect();
 
                 AbstractSyntaxTreeNode {
                     symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolFor {
@@ -1080,5 +1101,14 @@ impl Parser {
         }
 
         panic!("No terminal node found in subtree");
+    }
+
+    fn find_statements<'a>(&self, node: &'a ParseTreeNode, out: &mut Vec<&'a ParseTreeNode>) {
+        if node.symbol == ParseTreeSymbol::ParseTreeSymbolNodeStatement {
+            out.push(node);
+        }
+        for child in &node.children {
+            self.find_statements(child, out);
+        }
     }
 }
