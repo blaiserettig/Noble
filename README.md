@@ -24,32 +24,41 @@ A minimal, educational programming language implemented in Rust that compiles to
 Noble follows a simple, C-like syntax:
 
 ```noble
-i32s x = 42;        // Variable declaration and initialization
-i32s y = x;         // Variable assignment from another variable
-exit y;             // Exit program with return code
-```
-
-```noble
-for i in 1 to 100 { 
-    ...             // // Supports user-defined iterator names and numeric ranges
+i32s x = 0;
+for i in 0 to 10 {              // User-defined iterator names
+    x = x + i;                  // Variable assignment from another variable
 }
+{                               // User-defined blocks
+    bool y = false;             // Will not conflict with the later defined y
+    f32s z = 3.14159;
+}
+i32s y = ((x + 10) * 5) / 2;    // Correct order of operations
+exit y;                         // Exit with return code
 ```
 
 ### Grammar
 
 ```
-Entry Point    → [Stmt]*
-[Stmt]         → [Exit] | [VariableDec] | [VariableAsm] | [For]
-[VariableDec]  → [Type] [Ident] = [Expr] ;
-[VariableAsm]  → [Ident] = [Expr] ;
-[For]          → for [Ident] in [Int_Lit] to [Int_Lit] { [Stmt] }
-[Type]         → i32s | f32s | bool
-[Ident]        → user-defined non-keyword
-[Exit]         → exit [Expr] ;
-[Expr]         → [Int_Lit] | [Float_Lit] | [Bool_Lit] | [Ident]
-[Int_Lit]      → integer literal
-[Int_Lit]      → floating point literal
-[Int_Lit]      → boolean point literal
+"Entry Point"   → Stmt*
+Stmt            → Exit | VariableDec | VariableAsm | For | If
+VariableDec     → Type Ident "=" Expr ";"
+VariableAsm     → Ident "=" Expr ";"
+For             → "for" Ident "in" Int_Lit "to" Int_Lit Block
+If              → "if" Expr Block Else
+Else            → "else" If | else" Block | ε
+Block           → "{" Stmt* "}"
+Type            → i32s | f32s | bool
+Ident           → *user-defined non-keyword*
+Exit            → "exit" Expr ";"
+Expr            → Equality
+Equality        → Comparison (("==" | "!=") Comparison)*
+Comparison      → Add (("<" | "<=" | ">" | ">=") Add)*
+Add             → Mul (("+" | "-") Mul)*
+Mul             → Primary (("*" | "/") Primary)*
+Primary         → Int_Lit | Float_Lit | Bool_Lit | Ident | "(" Expr ")"
+Int_Lit         → *integer literal*
+Int_Lit         → *floating point literal*
+Int_Lit         → *boolean point literal*
 ```
 
 ## Architecture
@@ -80,9 +89,8 @@ x86-64 Assembly (.asm)
 ## Implementation Details
 
 ### Tokenizer
-- **Character-by-character parsing** with lookahead support
-- **Keyword recognition**: `exit`, `i32s`
-- **Token types**: Identifiers, integer literals, operators, punctuation
+- **Character-by-character lexing** with lookahead support
+- **Keyword recognition**
 - **Error handling**: Graceful failure on unrecognized characters
 
 ### Parser
@@ -343,9 +351,9 @@ AbstractSyntaxTreeSymbolEntry
 - [x] Assignment operator (`=`)
 - [x] Symbol table refactor to allow scoping ({})
 - [ ] More primitive types (`f32`, `bool`, `char`)
-- [ ] Arithmetic expressions (`+`, `-`, `*`, `/`)
-- [ ] Boolean type and logical operations
-- [ ] Comparison operators (`==`, `!=`, `<`, `>`)
+- [x] Arithmetic expressions (`+`, `-`, `*`, `/`)
+- [ ] Logical operations
+- [x] Comparison operators (`==`, `!=`, `<`, `>`)
 
 ### Medium Term  
 - [ ] Arrays and basic data structures

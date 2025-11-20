@@ -15,7 +15,8 @@ Exit            → "exit" Expr ";"
 Expr            → Equality
 Equality        → Comparison (("==" | "!=") Comparison)*
 Comparison      → Add (("<" | "<=" | ">" | ">=") Add)*
-Add             → Primary (("+" | "-") Primary)*
+Add             → Mul (("+" | "-") Mul)*
+Mul             → Primary (("*" | "/") Primary)*
 Primary         → Int_Lit | Float_Lit | Bool_Lit | Ident | "(" Expr ")"
 Int_Lit         → *integer literal*
 Int_Lit         → *floating point literal*
