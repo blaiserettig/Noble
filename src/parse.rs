@@ -23,7 +23,7 @@ pub enum AbstractSyntaxTreeSymbol {
     },
     AbstractSyntaxTreeSymbolBlock {
         body: Vec<AbstractSyntaxTreeNode>,
-    }
+    },
 }
 
 #[derive(Debug)]
@@ -106,6 +106,8 @@ pub enum Expr {
 
 #[derive(Debug, Clone)]
 pub enum BinOpType {
+    Multiply,
+    Divide,
     Add,
     Subtract,
     Equal,
@@ -411,7 +413,7 @@ impl Parser {
 
         Ok(left)
     }
-    
+
     // Mul → Primary (("*" | "/") Primary)*
     fn parse_mul(&mut self) -> Result<ParseTreeNode, String> {
         let mut left = self.parse_primary()?;
@@ -446,7 +448,7 @@ impl Parser {
                 _ => break,
             }
         }
-        
+
         Ok(left)
     }
 
@@ -607,7 +609,7 @@ impl Parser {
             .clone();
         
         let var_type = self.match_type_in_scope(&type_node);
-        let var_value = self.match_expression_in_scope(&expr_node);
+        let var_value = self.build_expr(&expr_node);
         self.insert_in_scope(
             var_name,
             VarEntry {
@@ -685,7 +687,7 @@ impl Parser {
             .as_ref()
             .expect("Identifier should have a value")
             .clone();
-        let var_value = self.match_expression_in_scope(&expr_node).clone();
+        let var_value = self.build_expr(&expr_node).clone();
         if self.lookup_in_scope(&var_name).is_none() {
             return Err(format!("Undefined variable {}", var_name));
         }
@@ -801,7 +803,7 @@ impl Parser {
                 self.current().unwrap().token_type
             ));
         }
-        
+
         self.push_scope();
 
         // push iterator while inside the new scope
@@ -813,7 +815,7 @@ impl Parser {
             .clone();
 
         let var_type = Type::I32S;
-        let var_value = self.match_expression_in_scope(&lower_bound_node);
+        let var_value = self.build_expr(&lower_bound_node);
         self.insert_in_scope(
             var_name,
             VarEntry {
@@ -821,10 +823,10 @@ impl Parser {
                 var_value,
             },
         );
-        
+
         let block_node = self.parse_block()?;
         self.pop_scope();
-        
+
         Ok(ParseTreeNode {
             symbol: ParseTreeSymbol::ParseTreeSymbolNodeFor,
             children: vec![
@@ -839,7 +841,7 @@ impl Parser {
             value: None,
         })
     }
-    
+
     fn parse_block(&mut self) -> Result<ParseTreeNode, String> {
         if self.current().unwrap().token_type != TokenType::TokenTypeLeftCurlyBrace {
             return Err(format!(
@@ -853,7 +855,7 @@ impl Parser {
             value: None,
         };
         self.consume();
-        
+
         let statement_node = self.parse_statement()?;
 
         if self.current().unwrap().token_type != TokenType::TokenTypeRightCurlyBrace {
@@ -868,7 +870,7 @@ impl Parser {
             value: None,
         };
         self.consume();
-        
+
         Ok(ParseTreeNode {
             symbol: ParseTreeSymbol::ParseTreeSymbolNodeBlock,
             children: vec![
@@ -971,26 +973,33 @@ impl Parser {
             }
 
             ParseTreeSymbol::ParseTreeSymbolNodeVariableDeclaration => {
-                if let Some(node_expr) = parse_tree
-                    .children
-                    .iter()
-                    .find(|c| c.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression)
-                {
-                    let terminal_id_node = self.find_terminal(node_expr);
-                    
-                    let name = terminal_id_node.value.as_ref().expect("Missing terminal");
-                    let entry = self.lookup_in_scope(name).unwrap();
+                // Children:
+                // [0] = type
+                // [1] = identifier
+                // [2] = "="
+                // [3] = expression
+                // [4] = ";"
 
-                    AbstractSyntaxTreeNode {
-                        symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration {
-                            name: name.to_string(),
-                            type_: entry.var_type.clone(),
-                            value: entry.var_value.clone(),
-                        },
-                        children: Vec::new(),
-                    }
-                } else {
-                    panic!("Variable declaration node has no expression child");
+                let type_node = &parse_tree.children[0];
+                let ident_node = &parse_tree.children[1];
+                let expr_node = &parse_tree.children[3];
+                
+                let name = self
+                    .find_terminal(ident_node)
+                    .value
+                    .as_ref()
+                    .unwrap()
+                    .clone();
+
+                let value_expr = self.build_expr(expr_node);
+
+                AbstractSyntaxTreeNode {
+                    symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration {
+                        name,
+                        type_: self.match_type_in_scope(type_node),
+                        value: value_expr,
+                    },
+                    children: vec![],
                 }
             }
 
@@ -1060,7 +1069,7 @@ impl Parser {
                     children: vec![],
                 }
             }
-            
+
             ParseTreeSymbol::ParseTreeSymbolNodeBlock => {
                 let mut stmt_nodes = Vec::new();
                 self.find_statements(parse_tree, &mut stmt_nodes);
@@ -1082,6 +1091,136 @@ impl Parser {
                 panic!("Unexpected parse tree node: {:?}", parse_tree.symbol);
             }
         }
+    }
+
+    fn build_primary(&mut self, node: &ParseTreeNode) -> Expr {
+        // Parenthesized expression
+        if node.children.len() == 3
+            && node.children[0].symbol == ParseTreeSymbol::ParseTreeSymbolTerminalLeftParen
+            && node.children[2].symbol == ParseTreeSymbol::ParseTreeSymbolTerminalRightParen
+        {
+            // children: "(", Expr, ")"
+            return self.build_expr(&node.children[1]);
+        }
+
+        // Simple literal / identifier
+        let child = node.children.first().unwrap();
+        match child.symbol {
+            ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral => {
+                let value = child.value.as_ref().unwrap().parse::<i32>().unwrap();
+                Expr::Int(value)
+            }
+            ParseTreeSymbol::ParseTreeSymbolTerminalFloatLiteral => {
+                let value = child.value.as_ref().unwrap().parse::<f32>().unwrap();
+                Expr::Float(value)
+            }
+            ParseTreeSymbol::ParseTreeSymbolTerminalBooleanLiteral => {
+                let value = child.value.as_ref().unwrap().parse::<bool>().unwrap();
+                Expr::Bool(value)
+            }
+            ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier => {
+                let ident = child.value.as_ref().unwrap().clone();
+                if self.lookup_in_scope(&ident).is_none() {
+                    panic!("Undefined identifier {}", ident);
+                }
+                Expr::Ident(ident)
+            }
+            _ => panic!("Unsupported expression type: {:?}", child.symbol),
+        }
+    }
+
+    fn build_mul(&mut self, node: &ParseTreeNode) -> Expr {
+        let mut expr = self.build_expr(&node.children[0]);
+
+        let mut i = 1;
+        while i < node.children.len() {
+            let op = &node.children[i].symbol;
+            let right = self.build_expr(&node.children[i + 1]);
+
+            expr = match op {
+                ParseTreeSymbol::ParseTreeSymbolTerminalStar =>
+                    Expr::BinaryOp { left: Box::new(expr), op: BinOpType::Multiply, right: Box::new(right) },
+
+                ParseTreeSymbol::ParseTreeSymbolTerminalSlash =>
+                    Expr::BinaryOp { left: Box::new(expr), op: BinOpType::Divide, right: Box::new(right) },
+
+                _ => panic!("Unexpected operator in Mul node"),
+            };
+            i += 2;
+        }
+        expr
+    }
+
+    fn build_add(&mut self, node: &ParseTreeNode) -> Expr {
+        let mut expr = self.build_expr(&node.children[0]);
+
+        let mut i = 1;
+        while i < node.children.len() {
+            let op = &node.children[i].symbol;
+            let right = self.build_expr(&node.children[i + 1]);
+
+            expr = match op {
+                ParseTreeSymbol::ParseTreeSymbolTerminalPlus =>
+                    Expr::BinaryOp { left: Box::new(expr), op: BinOpType::Add, right: Box::new(right) },
+
+                ParseTreeSymbol::ParseTreeSymbolTerminalMinus =>
+                    Expr::BinaryOp { left: Box::new(expr), op: BinOpType::Subtract, right: Box::new(right) },
+
+                _ => panic!("Unexpected operator in Add node"),
+            };
+            i += 2;
+        }
+        expr
+    }
+    
+    fn build_comparison(&mut self, node: &ParseTreeNode) -> Expr {
+        let mut expr = self.build_expr(&node.children[0]);
+
+        let mut i = 1;
+        while i < node.children.len() {
+            let op = &node.children[i].symbol;
+            let right = self.build_expr(&node.children[i + 1]);
+
+            expr = match op {
+                ParseTreeSymbol::ParseTreeSymbolTerminalLessThan =>
+                    Expr::BinaryOp { left: Box::new(expr), op: BinOpType::LessThan, right: Box::new(right) },
+
+                ParseTreeSymbol::ParseTreeSymbolTerminalLessThanOrEqual =>
+                    Expr::BinaryOp { left: Box::new(expr), op: BinOpType::LessThanOrEqual, right: Box::new(right) },
+
+                ParseTreeSymbol::ParseTreeSymbolTerminalGreaterThan =>
+                    Expr::BinaryOp { left: Box::new(expr), op: BinOpType::GreaterThan, right: Box::new(right) },
+
+                ParseTreeSymbol::ParseTreeSymbolTerminalGreaterThanOrEqual =>
+                    Expr::BinaryOp { left: Box::new(expr), op: BinOpType::GreaterThanOrEqual, right: Box::new(right) },
+
+                _ => panic!("Unexpected operator in Comparison node"),
+            };
+            i += 2;
+        }
+        expr
+    }
+    
+    fn build_equality(&mut self, node: &ParseTreeNode) -> Expr {
+        let mut expr = self.build_expr(&node.children[0]);
+
+        let mut i = 1;
+        while i < node.children.len() {
+            let op = &node.children[i].symbol;
+            let right = self.build_expr(&node.children[i + 1]);
+
+            expr = match op {
+                ParseTreeSymbol::ParseTreeSymbolTerminalEqualsEquals =>
+                    Expr::BinaryOp { left: Box::new(expr), op: BinOpType::Equal, right: Box::new(right) },
+
+                ParseTreeSymbol::ParseTreeSymbolTerminalNotEquals =>
+                    Expr::BinaryOp { left: Box::new(expr), op: BinOpType::NotEqual, right: Box::new(right) },
+
+                _ => panic!("Unexpected operator in Equality node"),
+            };
+            i += 2;
+        }
+        expr
     }
 
     fn push_scope(&mut self) {
@@ -1124,30 +1263,21 @@ impl Parser {
         }
     }
 
-    fn match_expression_in_scope(&mut self, node: &ParseTreeNode) -> Expr {
-        let child = self.find_terminal(node);
-        match child.symbol {
-            ParseTreeSymbol::ParseTreeSymbolTerminalIntegerLiteral => {
-                let value = child.value.as_ref().unwrap().parse::<i32>().unwrap();
-                Expr::Int(value)
-            }
-            ParseTreeSymbol::ParseTreeSymbolTerminalFloatLiteral => {
-                let value = child.value.as_ref().unwrap().parse::<f32>().unwrap();
-                Expr::Float(value)
-            }
-            ParseTreeSymbol::ParseTreeSymbolTerminalBooleanLiteral => {
-                let value = child.value.as_ref().unwrap().parse::<bool>().unwrap();
-                Expr::Bool(value)
-            }
-            ParseTreeSymbol::ParseTreeSymbolTerminalIdentifier => {
-                let ident = child.value.as_ref().unwrap().clone();
-                if self.lookup_in_scope(&ident).is_none() {
-                    panic!("Undefined identifier {}", ident);
-                }
-                Expr::Ident(ident)
-            }
-            _ => panic!("Unsupported expression type"),
+    fn build_expr(&mut self, node: &ParseTreeNode) -> Expr { 
+        let child: &ParseTreeNode;
+        if node.symbol == ParseTreeSymbol::ParseTreeSymbolNodeExpression {
+            child = node.children.first().unwrap();
+        } else {
+            child = node;
         }
+        match child.symbol {
+           ParseTreeSymbol::ParseTreeSymbolNodePrimary => self.build_primary(child),
+           ParseTreeSymbol::ParseTreeSymbolNodeMul => self.build_mul(child),
+           ParseTreeSymbol::ParseTreeSymbolNodeAdd => self.build_add(child),
+           ParseTreeSymbol::ParseTreeSymbolNodeComparison => self.build_comparison(child),
+           ParseTreeSymbol::ParseTreeSymbolNodeEquality => self.build_equality(child),
+           _ => panic!("Unknown expression node: {:?}", node.symbol),
+       }
     }
     
     fn find_terminal<'a>(&mut self, node: &'a ParseTreeNode) -> &'a ParseTreeNode {
