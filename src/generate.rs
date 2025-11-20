@@ -1,4 +1,4 @@
-use crate::parse::{AbstractSyntaxTreeNode, AbstractSyntaxTreeSymbol, Expr};
+use crate::parse::{AbstractSyntaxTreeNode, AbstractSyntaxTreeSymbol, BinOpType, Expr};
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::BufWriter;
@@ -62,8 +62,8 @@ impl Generator {
                     let val = if *b { 1 } else { 0 };
                     writeln!(writer, "    mov eax, {}", val).unwrap();
                 }
-                Expr::BinaryOp { .. } => {
-                    todo!("Code generation for binary operations not yet implemented")
+                Expr::BinaryOp { left, op, right } => {
+                    self.generate_binary_op(left, op, right, writer);
                 }
             },
 
@@ -147,8 +147,9 @@ impl Generator {
                 let val = if *b { 1 } else { 0 };
                 writeln!(writer, "    mov dword [{}], {}", name, val).unwrap();
             }
-            Expr::BinaryOp { .. } => {
-                todo!("Code generation for binary operations not yet implemented")
+            Expr::BinaryOp { left, op, right } => {
+                self.generate_binary_op(left, op, right, writer);
+                writeln!(writer, "    mov dword [{}], eax", name).unwrap();
             }
         }
     }
@@ -174,8 +175,77 @@ impl Generator {
                 let val = if *b { 1 } else { 0 };
                 writeln!(writer, "    mov {}, {}", reg, val).unwrap();
             }
-            Expr::BinaryOp { .. } => {
-                todo!("Code generation for binary operations not yet implemented")
+            Expr::BinaryOp { left, op, right } => {
+                self.generate_binary_op(left, op, right, writer);
+                writeln!(writer, "    mov {}, eax", reg).unwrap();
+            }
+        }
+    }
+
+    fn generate_binary_op(
+        &mut self,
+        left: &Expr,
+        op: &BinOpType,
+        right: &Expr,
+        writer: &mut BufWriter<&File>,
+    ) {
+        // Eval left into eax
+        self.generate_expr_into_register(left, "eax", writer);
+
+        // Push eax (save left value)
+        writeln!(writer, "    push rax").unwrap();
+
+        // Eval right into ebx
+        self.generate_expr_into_register(right, "ebx", writer);
+
+        // Restore left into eax
+        writeln!(writer, "    pop rax").unwrap();
+
+        match op {
+            BinOpType::Add => {
+                writeln!(writer, "    add eax, ebx").unwrap();
+            }
+            BinOpType::Subtract => {
+                writeln!(writer, "    sub eax, ebx").unwrap();
+            }
+            BinOpType::Multiply => {
+                writeln!(writer, "    imul eax, ebx").unwrap();
+            }
+            BinOpType::Divide => {
+                writeln!(writer, "    cdq").unwrap();      // sign-extend eax into edx:eax
+                writeln!(writer, "    idiv ebx").unwrap(); // eax = eax / ebx
+            }
+
+            // set eax to 1 or 0 on comparisons
+            BinOpType::LessThan => {
+                writeln!(writer, "    cmp eax, ebx").unwrap();
+                writeln!(writer, "    setl al").unwrap();
+                writeln!(writer, "    movzx eax, al").unwrap();
+            }
+            BinOpType::LessThanOrEqual => {
+                writeln!(writer, "    cmp eax, ebx").unwrap();
+                writeln!(writer, "    setle al").unwrap();
+                writeln!(writer, "    movzx eax, al").unwrap();
+            }
+            BinOpType::GreaterThan => {
+                writeln!(writer, "    cmp eax, ebx").unwrap();
+                writeln!(writer, "    setg al").unwrap();
+                writeln!(writer, "    movzx eax, al").unwrap();
+            }
+            BinOpType::GreaterThanOrEqual => {
+                writeln!(writer, "    cmp eax, ebx").unwrap();
+                writeln!(writer, "    setge al").unwrap();
+                writeln!(writer, "    movzx eax, al").unwrap();
+            }
+            BinOpType::Equal => {
+                writeln!(writer, "    cmp eax, ebx").unwrap();
+                writeln!(writer, "    sete al").unwrap();
+                writeln!(writer, "    movzx eax, al").unwrap();
+            }
+            BinOpType::NotEqual => {
+                writeln!(writer, "    cmp eax, ebx").unwrap();
+                writeln!(writer, "    setne al").unwrap();
+                writeln!(writer, "    movzx eax, al").unwrap();
             }
         }
     }
