@@ -62,6 +62,9 @@ impl Generator {
                     let val = if *b { 1 } else { 0 };
                     writeln!(writer, "    mov eax, {}", val).unwrap();
                 }
+                Expr::BinaryOp { .. } => {
+                    todo!("Code generation for binary operations not yet implemented")
+                }
             },
 
             AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolVariableDeclaration {
@@ -138,6 +141,9 @@ impl Generator {
                 let val = if *b { 1 } else { 0 };
                 writeln!(writer, "    mov dword [{}], {}", name, val).unwrap();
             }
+            Expr::BinaryOp { .. } => {
+                todo!("Code generation for binary operations not yet implemented")
+            }
         }
     }
 
@@ -161,6 +167,9 @@ impl Generator {
             Expr::Bool(b) => {
                 let val = if *b { 1 } else { 0 };
                 writeln!(writer, "    mov {}, {}", reg, val).unwrap();
+            }
+            Expr::BinaryOp { .. } => {
+                todo!("Code generation for binary operations not yet implemented")
             }
         }
     }
