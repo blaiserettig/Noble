@@ -5,21 +5,25 @@ segment .text
 global mainCRTStartup
 
 mainCRTStartup:
-    mov dword [x], 0
-    mov eax, dword [x]
+    mov dword [c], 97
+    mov dword [d], 98
+    mov eax, dword [c]
     push rax
-    mov ebx, 0
+    mov ebx, dword [d]
     pop rax
     cmp eax, ebx
-    sete al
+    setl al
     movzx eax, al
     mov eax, eax
     cmp eax, 0
-    je endif_0
-    mov dword [x], 1
+    je else_0
+    mov eax, 1
+    jmp endif_0
+else_0:
+    mov eax, 0
 endif_0:
-    mov eax, dword [x]
     ret
 
 segment .bss
-x resd 1
+c resd 1
+d resd 1

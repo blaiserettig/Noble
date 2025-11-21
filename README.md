@@ -350,7 +350,7 @@ AbstractSyntaxTreeSymbolEntry
 ### Short Term
 - [x] Assignment operator (`=`)
 - [x] Symbol table refactor to allow scoping ({})
-- [ ] More primitive types (`f32`, `bool`, `char`)
+- [x] More primitive types (`f32`, `bool`, `char`)
 - [x] Arithmetic expressions (`+`, `-`, `*`, `/`)
 - [ ] Logical operations
 - [x] Comparison operators (`==`, `!=`, `<`, `>`)
