@@ -237,7 +237,9 @@ impl Parser {
                 Ok(statement_node)
             }
             TokenType::TokenTypeLeftCurlyBrace => {
+                self.push_scope();
                 statement_node.children.push(self.parse_block()?);
+                self.pop_scope();
                 Ok(statement_node)
             }
             _ => Err(format!(
@@ -610,6 +612,10 @@ impl Parser {
         
         let var_type = self.match_type_in_scope(&type_node);
         let var_value = self.build_expr(&expr_node);
+        if self.lookup_in_scope(&var_name).is_some() {
+            return Err(format!("ParseError: Duplicate variable name in same scope: {:?}",
+                               var_name));
+        }
         self.insert_in_scope(
             var_name,
             VarEntry {

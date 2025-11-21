@@ -47,7 +47,7 @@ loop_end_i:
     ret
 
 segment .bss
+y resd 1
 i resd 1
 x resd 1
-y resd 1
 z resd 1
