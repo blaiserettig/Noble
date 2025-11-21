@@ -358,7 +358,7 @@ AbstractSyntaxTreeSymbolEntry
 ### Medium Term  
 - [ ] Arrays and basic data structures
 - [ ] String literals and manipulation
-- [ ] Conditional statements (`if`/`else`)
+- [x] Conditional statements (`if`/`else`)
 - [x] Loops (`while`, `for`)
 
 ### Long Term
