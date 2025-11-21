@@ -62,6 +62,9 @@ impl Generator {
                     let val = if *b { 1 } else { 0 };
                     writeln!(writer, "    mov eax, {}", val).unwrap();
                 }
+                Expr::Char(c) => {
+                    writeln!(writer, "    mov eax, {}", *c as u32).unwrap();
+                }
                 Expr::BinaryOp { left, op, right } => {
                     self.generate_binary_op(left, op, right, writer);
                 }
@@ -124,7 +127,7 @@ impl Generator {
             } => {
                 self.generate_if(condition, body, else_body, writer);
             }
-            
+
             AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolBlock { body } => {
                 for stmt in body {
                     self.generate_x64(stmt, writer);
@@ -155,6 +158,9 @@ impl Generator {
                 let val = if *b { 1 } else { 0 };
                 writeln!(writer, "    mov dword [{}], {}", name, val).unwrap();
             }
+            Expr::Char(c) => {
+                writeln!(writer, "    mov dword [{}], {}", name, *c as u32).unwrap();
+            }
             Expr::BinaryOp { left, op, right } => {
                 self.generate_binary_op(left, op, right, writer);
                 writeln!(writer, "    mov dword [{}], eax", name).unwrap();
@@ -182,6 +188,9 @@ impl Generator {
             Expr::Bool(b) => {
                 let val = if *b { 1 } else { 0 };
                 writeln!(writer, "    mov {}, {}", reg, val).unwrap();
+            }
+            Expr::Char(c) => {
+                writeln!(writer, "    mov {}, {}", reg, *c as u32).unwrap();
             }
             Expr::BinaryOp { left, op, right } => {
                 self.generate_binary_op(left, op, right, writer);
@@ -220,7 +229,7 @@ impl Generator {
                 writeln!(writer, "    imul eax, ebx").unwrap();
             }
             BinOpType::Divide => {
-                writeln!(writer, "    cdq").unwrap();      // sign-extend eax into edx:eax
+                writeln!(writer, "    cdq").unwrap(); // sign-extend eax into edx:eax
                 writeln!(writer, "    idiv ebx").unwrap(); // eax = eax / ebx
             }
 
@@ -302,7 +311,7 @@ impl Generator {
             writeln!(writer, "{}:", else_label).unwrap();
             self.generate_x64(else_ast, writer);
         }
-        
+
         writeln!(writer, "{}:", end_label).unwrap();
     }
 }

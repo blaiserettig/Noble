@@ -11,7 +11,9 @@ pub enum TokenType {
     TokenTypeTypeI32S,
     TokenTypeTypeF32S,
     TokenTypeTypeBool,
+    TokenTypeTypeChar,
     TokenTypeFloatLiteral,
+    TokenTypeCharLiteral,
     TokenTypeBooleanLiteral,
     TokenTypeFor,
     TokenTypeForIn,
@@ -88,6 +90,11 @@ impl Tokenizer {
                         token_type: TokenType::TokenTypeTypeBool,
                         value: None,
                     });
+                } else if buffer == ['c', 'h', 'a', 'r'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeTypeChar,
+                        value: None,
+                    });
                 } else if buffer == ['t', 'r', 'u', 'e'] {
                     tokens.push(Token {
                         token_type: TokenType::TokenTypeBooleanLiteral,
@@ -113,12 +120,12 @@ impl Tokenizer {
                         token_type: TokenType::TokenTypeForTo,
                         value: None,
                     })
-                }else if buffer == ['i', 'f'] {
+                } else if buffer == ['i', 'f'] {
                     tokens.push(Token {
                         token_type: TokenType::TokenTypeIf,
                         value: None,
                     })
-                }else if buffer == ['e', 'l', 's', 'e'] {
+                } else if buffer == ['e', 'l', 's', 'e'] {
                     tokens.push(Token {
                         token_type: TokenType::TokenTypeElse,
                         value: None,
@@ -258,6 +265,19 @@ impl Tokenizer {
                     token_type: TokenType::TokenTypeRightCurlyBrace,
                     value: None,
                 });
+            } else if self.current().unwrap() == '\'' {
+                self.consume(); // opening quote
+                let char_val = self.consume();
+                if self.current().unwrap() == '\'' {
+                    self.consume(); // closing quote
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeCharLiteral,
+                        value: Some(char_val.to_string()),
+                    });
+                } else {
+                    eprintln!("Tokenization Error: Expected closing quote for char literal");
+                    exit(1);
+                }
             } else if self.current().unwrap().is_ascii_whitespace() {
                 self.consume();
             } else {
