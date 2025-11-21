@@ -113,6 +113,16 @@ impl Tokenizer {
                         token_type: TokenType::TokenTypeForTo,
                         value: None,
                     })
+                }else if buffer == ['i', 'f'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeIf,
+                        value: None,
+                    })
+                }else if buffer == ['e', 'l', 's', 'e'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeElse,
+                        value: None,
+                    })
                 } else {
                     // If not a keyword, it is an identifier
                     tokens.push(Token {

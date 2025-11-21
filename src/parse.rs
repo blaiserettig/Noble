@@ -245,6 +245,10 @@ impl Parser {
                 statement_node.children.push(self.parse_for()?);
                 Ok(statement_node)
             }
+            TokenType::TokenTypeIf => {
+                statement_node.children.push(self.parse_if()?);
+                Ok(statement_node)
+            }
             TokenType::TokenTypeLeftCurlyBrace => {
                 self.push_scope();
                 statement_node.children.push(self.parse_block()?);
