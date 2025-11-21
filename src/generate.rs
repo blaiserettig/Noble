@@ -116,6 +116,14 @@ impl Generator {
 
                 writeln!(writer, "{}:", end_label).unwrap();
             }
+
+            AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolIf {
+                condition,
+                body,
+                else_body,
+            } => {
+                self.generate_if(condition, body, else_body, writer);
+            }
             
             AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolBlock { body } => {
                 for stmt in body {
@@ -248,5 +256,53 @@ impl Generator {
                 writeln!(writer, "    movzx eax, al").unwrap();
             }
         }
+    }
+
+    fn generate_if(
+        &mut self,
+        condition: &Expr,
+        body: &Vec<AbstractSyntaxTreeNode>,
+        else_body: &Option<Box<AbstractSyntaxTreeNode>>,
+        writer: &mut BufWriter<&File>,
+    ) {
+        static mut LABEL_COUNT: usize = 0;
+        let id = unsafe {
+            let current = LABEL_COUNT;
+            LABEL_COUNT += 1;
+            current
+        };
+
+        let else_label = format!("else_{}", id);
+        let end_label = format!("endif_{}", id);
+
+        self.generate_expr_into_register(condition, "eax", writer);
+
+        // Compare eax with 0 (false)
+        writeln!(writer, "    cmp eax, 0").unwrap();
+
+        // Jump if false → else or end if no else
+        if else_body.is_some() {
+            writeln!(writer, "    je {}", else_label).unwrap();
+        } else {
+            writeln!(writer, "    je {}", end_label).unwrap();
+        }
+
+        // IF BODY
+        for stmt in body {
+            self.generate_x64(stmt, writer);
+        }
+
+        // End of IF always jumps to end_label if else exists
+        if else_body.is_some() {
+            writeln!(writer, "    jmp {}", end_label).unwrap();
+        }
+
+        // ELSE or ELSE IF
+        if let Some(else_ast) = else_body {
+            writeln!(writer, "{}:", else_label).unwrap();
+            self.generate_x64(else_ast, writer);
+        }
+        
+        writeln!(writer, "{}:", end_label).unwrap();
     }
 }

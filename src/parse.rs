@@ -21,6 +21,11 @@ pub enum AbstractSyntaxTreeSymbol {
         iterator_end: Expr,
         body: Vec<AbstractSyntaxTreeNode>,
     },
+    AbstractSyntaxTreeSymbolIf {
+        condition: Expr,
+        body: Vec<AbstractSyntaxTreeNode>,
+        else_body: Option<Box<AbstractSyntaxTreeNode>>,
+    },
     AbstractSyntaxTreeSymbolBlock {
         body: Vec<AbstractSyntaxTreeNode>,
     },
@@ -42,6 +47,8 @@ pub enum ParseTreeSymbol {
     ParseTreeSymbolNodeVariableAssignment,
     ParseTreeSymbolNodeType,
     ParseTreeSymbolNodeFor,
+    ParseTreeSymbolNodeIf,
+    ParseTreeSymbolNodeElse,
     ParseTreeSymbolNodeBlock,
     ParseTreeSymbolNodeEquality,
     ParseTreeSymbolNodeComparison,
@@ -61,6 +68,8 @@ pub enum ParseTreeSymbol {
     ParseTreeSymbolTerminalFor,
     ParseTreeSymbolTerminalForIn,
     ParseTreeSymbolTerminalForTo,
+    ParseTreeSymbolTerminalIf,
+    ParseTreeSymbolTerminalElse,
     ParseTreeSymbolTerminalLeftCurlyBrace,
     ParseTreeSymbolTerminalRightCurlyBrace,
     ParseTreeSymbolTerminalPlus,
@@ -848,6 +857,76 @@ impl Parser {
         })
     }
 
+    fn parse_if(&mut self) -> Result<ParseTreeNode, String> {
+        if self.current().unwrap().token_type != TokenType::TokenTypeIf {
+            return Err(format!(
+                "MissingTokenError: Expected 'if', found: {:?}",
+                self.current().unwrap().token_type
+            ));
+        }
+        let if_terminal = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalIf,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+
+        let expr_node = self.parse_expression()?;
+
+        self.push_scope();
+        let block_node = self.parse_block()?;
+        self.pop_scope();
+
+        let else_node = self.parse_else()?;
+
+        Ok(ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolNodeIf,
+            children: vec![
+                if_terminal,
+                expr_node,
+                block_node,
+                else_node],
+            value: None,
+        })
+    }
+
+    fn parse_else(&mut self) -> Result<ParseTreeNode, String> {
+        if self.current().unwrap().token_type != TokenType::TokenTypeElse {
+            return Ok(ParseTreeNode {
+                symbol: ParseTreeSymbol::ParseTreeSymbolNodeElse,
+                children: vec![],
+                value: None,
+            });
+        }
+        let else_terminal = ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolTerminalElse,
+            children: vec![],
+            value: None,
+        };
+        self.consume();
+
+        let child: ParseTreeNode = match self.current().map(|t| t.token_type) {
+            Some(TokenType::TokenTypeIf) => {
+                self.parse_if()?
+            }
+            Some(TokenType::TokenTypeLeftCurlyBrace) => {
+                self.push_scope();
+                let block = self.parse_block()?;
+                self.pop_scope();
+                block
+            }
+            other => {
+                return Err(format!("Unexpected token after `else`: {:?}", other));
+            }
+        };
+
+        Ok(ParseTreeNode {
+            symbol: ParseTreeSymbol::ParseTreeSymbolNodeElse,
+            children: vec![else_terminal, child],
+            value: None,
+        })
+    }
+
     fn parse_block(&mut self) -> Result<ParseTreeNode, String> {
         if self.current().unwrap().token_type != TokenType::TokenTypeLeftCurlyBrace {
             return Err(format!(
@@ -1083,6 +1162,72 @@ impl Parser {
                         body,
                     },
                     children: vec![],
+                }
+            }
+
+            ParseTreeSymbol::ParseTreeSymbolNodeIf => {
+                // Children:
+                // [0] = terminal
+                // [1] = expression
+                // [2] = block
+                // [3] = else
+
+                // Else children
+                // empty -> no else
+                //
+                // if node -> else if
+                // block node -> else
+
+                let condition_node = &parse_tree.children[1];
+                let condition = self.build_expr(condition_node);
+
+                let mut stmt_nodes = Vec::new();
+                self.find_statements(&parse_tree.children[2], &mut stmt_nodes);
+                let body: Vec<AbstractSyntaxTreeNode> =
+                    stmt_nodes.into_iter()
+                        .map(|stmt| self.build_ast(stmt))
+                        .collect();
+
+                if parse_tree.children[3].children.is_empty() { // there is no else
+                    AbstractSyntaxTreeNode {
+                        symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolIf {
+                            condition,
+                            body,
+                            else_body: None,
+                        },
+                        children: vec![],
+                    }
+                } else if parse_tree.children[3].children[1].symbol == ParseTreeSymbol::ParseTreeSymbolNodeIf { // there is an else if
+                    let else_if = self.build_ast(&parse_tree.children[3].children[1]);
+                    AbstractSyntaxTreeNode {
+                        symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolIf {
+                            condition,
+                            body,
+                            else_body: Some(Box::new(else_if)),
+                        },
+                        children: vec![],
+                    }
+                } else if parse_tree.children[3].children[1].symbol == ParseTreeSymbol::ParseTreeSymbolNodeBlock { // there is an else
+                    let mut else_stmts = Vec::new();
+                    self.find_statements(&parse_tree.children[3].children[1], &mut else_stmts);
+                    let else_body = AbstractSyntaxTreeNode {
+                        symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolBlock {
+                            body: else_stmts.into_iter()
+                                .map(|s| self.build_ast(s))
+                                .collect(),
+                        },
+                        children: vec![],
+                    };
+                    AbstractSyntaxTreeNode {
+                        symbol: AbstractSyntaxTreeSymbol::AbstractSyntaxTreeSymbolIf {
+                            condition,
+                            body,
+                            else_body: Some(Box::new(else_body)),
+                        },
+                        children: vec![],
+                    }
+                } else {
+                    panic!("Unexpected parse tree node: {:?}", parse_tree.symbol);
                 }
             }
 

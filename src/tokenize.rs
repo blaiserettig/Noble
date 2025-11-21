@@ -16,6 +16,8 @@ pub enum TokenType {
     TokenTypeFor,
     TokenTypeForIn,
     TokenTypeForTo,
+    TokenTypeIf,
+    TokenTypeElse,
     TokenTypeLeftCurlyBrace,
     TokenTypeRightCurlyBrace,
     TokenTypePlus,
