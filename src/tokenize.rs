@@ -16,6 +16,8 @@ pub enum TokenType {
     TokenTypeFor,
     TokenTypeForIn,
     TokenTypeForTo,
+    TokenTypeIf,
+    TokenTypeElse,
     TokenTypeLeftCurlyBrace,
     TokenTypeRightCurlyBrace,
     TokenTypePlus,
@@ -109,6 +111,16 @@ impl Tokenizer {
                 } else if buffer == ['t', 'o'] {
                     tokens.push(Token {
                         token_type: TokenType::TokenTypeForTo,
+                        value: None,
+                    })
+                }else if buffer == ['i', 'f'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeIf,
+                        value: None,
+                    })
+                }else if buffer == ['e', 'l', 's', 'e'] {
+                    tokens.push(Token {
+                        token_type: TokenType::TokenTypeElse,
                         value: None,
                     })
                 } else {
