@@ -11,7 +11,7 @@ A minimal, educational programming language implemented in Rust that compiles to
 ## Features
 
 - **Complete Compilation Pipeline**: Lexing → Parsing → AST Generation → x86-64 Code Generation
-- **Type System**: Currently supports signed 32-bit integers (`i32s`)
+- **Type System**: Strongly typed, currently supporting `i32s, f32s, bool`
 - **Variable Declaration and Assignment**: Store and retrieve values
 - **Control Flow**: For loops
 - **Program Exit with Return Values**: Control program termination
