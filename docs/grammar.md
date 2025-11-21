@@ -7,7 +7,7 @@ VariableDec     → Type Ident "=" Expr ";"
 VariableAsm     → Ident "=" Expr ";"
 For             → "for" Ident "in" Int_Lit "to" Int_Lit Block
 If              → "if" Expr Block Else
-Else            → "else" If | else" Block | ε
+Else            → "else" If | "else" Block | ε
 Block           → "{" Stmt* "}"
 Type            → i32s | f32s | bool
 Ident           → *user-defined non-keyword*
