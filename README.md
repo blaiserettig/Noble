@@ -33,7 +33,15 @@ for i in 0 to 10 {              // User-defined iterator names
     f32s z = 3.14159;
 }
 i32s y = ((x + 10) * 5) / 2;    // Correct order of operations
-exit y;                         // Exit with return code
+char c = 'a';
+char d = 'b';
+if c < d {                      // Supports lt, lte, gt, gte, eq, ne
+    exit 1;
+} else if c == d {
+    exit 2;
+} else {                        
+    exit 0;
+}
 ```
 
 ### Grammar
@@ -45,9 +53,9 @@ VariableDec     → Type Ident "=" Expr ";"
 VariableAsm     → Ident "=" Expr ";"
 For             → "for" Ident "in" Int_Lit "to" Int_Lit Block
 If              → "if" Expr Block Else
-Else            → "else" If | else" Block | ε
+Else            → "else" If | "else" Block | ε
 Block           → "{" Stmt* "}"
-Type            → i32s | f32s | bool
+Type            → i32s | f32s | bool | char
 Ident           → *user-defined non-keyword*
 Exit            → "exit" Expr ";"
 Expr            → Equality
@@ -55,10 +63,11 @@ Equality        → Comparison (("==" | "!=") Comparison)*
 Comparison      → Add (("<" | "<=" | ">" | ">=") Add)*
 Add             → Mul (("+" | "-") Mul)*
 Mul             → Primary (("*" | "/") Primary)*
-Primary         → Int_Lit | Float_Lit | Bool_Lit | Ident | "(" Expr ")"
+Primary         → Int_Lit | Float_Lit | Bool_Lit | Char_lit | Ident | "(" Expr ")"
 Int_Lit         → *integer literal*
 Int_Lit         → *floating point literal*
 Int_Lit         → *boolean point literal*
+Char_Lit        → *character literal*
 ```
 
 ## Architecture
